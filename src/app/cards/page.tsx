@@ -3,16 +3,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useSearchParams } from 'next/navigation'
-import { FunnelIcon, Squares2X2Icon, Bars3Icon, CogIcon } from '@heroicons/react/24/outline'
+import { FunnelIcon, Squares2X2Icon, Bars3Icon } from '@heroicons/react/24/outline'
 import ProductCard from '@/components/ProductCard'
 import { RootState } from '@/store'
-import { fetchCards, setFilters, setPage, setPageSize, setAPIProvider } from '@/store/productsSlice'
-import { fetchSets } from '@/store/productsSlice'
-
-const POKEMON_TYPES = [
-  'Colorless', 'Fire', 'Water', 'Lightning', 'Grass', 'Fighting',
-  'Psychic', 'Darkness', 'Metal', 'Dragon', 'Fairy'
-]
+import { fetchCards, setFilters, setPage, setPageSize } from '@/store/productsSlice'
 
 const RARITIES = [
   'Common', 'Uncommon', 'Rare', 'Rare Holo', 'Rare Ultra',
@@ -35,41 +29,33 @@ export default function CardsPage() {
   
   const { 
     cards, 
-    sets, 
     loading, 
     error, 
     filters, 
-    pagination,
-    currentAPI 
+    pagination
   } = useSelector((state: RootState) => state.products)
 
-  // Initialize filters from URL params
+  // Initialize filters from URL params (only once on mount)
   useEffect(() => {
     const searchQuery = searchParams.get('search')
-    const setFilter = searchParams.get('set')
-    const typeFilter = searchParams.get('type')
     const rarityFilter = searchParams.get('rarity')
 
     const newFilters: any = {}
     
     if (searchQuery) newFilters.name = searchQuery
-    if (setFilter) newFilters.set = setFilter
-    if (typeFilter) newFilters.types = [typeFilter]
     if (rarityFilter) newFilters.rarity = rarityFilter
 
     if (Object.keys(newFilters).length > 0) {
       dispatch(setFilters(newFilters))
     }
-  }, [searchParams, dispatch])
+  }, [searchParams]) // Remove dispatch to prevent double call
 
-  // Fetch data
+  // Fetch data when filters change (prevents double call)
   useEffect(() => {
-    dispatch(fetchSets() as any)
-  }, [dispatch])
-
-  useEffect(() => {
-    dispatch(fetchCards({ filters, apiProvider: currentAPI }) as any)
-  }, [dispatch, filters, currentAPI])
+    if (filters.name) {
+      dispatch(fetchCards({ filters }) as any)
+    }
+  }, [dispatch, filters])
 
   const handleFilterChange = useCallback((key: string, value: any) => {
     dispatch(setFilters({ [key]: value }))
@@ -86,8 +72,6 @@ export default function CardsPage() {
   const clearFilters = () => {
     dispatch(setFilters({
       name: '',
-      set: '',
-      types: [],
       rarity: '',
       orderBy: 'name'
     }))
@@ -96,8 +80,6 @@ export default function CardsPage() {
   const getFilterCount = () => {
     let count = 0
     if (filters.name) count++
-    if (filters.set) count++
-    if (filters.types && filters.types.length > 0) count++
     if (filters.rarity) count++
     return count
   }
@@ -143,45 +125,13 @@ export default function CardsPage() {
                     onChange={(e) => handleFilterChange('name', e.target.value)}
                     className="input w-full"
                     placeholder="Ej: Pikachu"
+                    disabled={loading}
                   />
-                </div>
-
-                {/* Set */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Set
-                  </label>
-                  <select
-                    value={filters.set || ''}
-                    onChange={(e) => handleFilterChange('set', e.target.value)}
-                    className="input w-full"
-                  >
-                    <option value="">Todos los sets</option>
-                    {sets.map((set) => (
-                      <option key={set.id} value={set.id}>
-                        {set.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tipo
-                  </label>
-                  <select
-                    value={filters.types?.[0] || ''}
-                    onChange={(e) => handleFilterChange('types', e.target.value ? [e.target.value] : [])}
-                    className="input w-full"
-                  >
-                    <option value="">Todos los tipos</option>
-                    {POKEMON_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
+                  {loading && filters.name && (
+                    <p className="text-xs text-blue-600 mt-1 animate-pulse">
+                      🔍 Buscando precios en TCGPlayer...
+                    </p>
+                  )}
                 </div>
 
                 {/* Rarity */}
@@ -193,6 +143,7 @@ export default function CardsPage() {
                     value={filters.rarity || ''}
                     onChange={(e) => handleFilterChange('rarity', e.target.value)}
                     className="input w-full"
+                    disabled={loading}
                   >
                     <option value="">Todas las rarezas</option>
                     {RARITIES.map((rarity) => (
@@ -212,6 +163,7 @@ export default function CardsPage() {
                     value={filters.orderBy || 'name'}
                     onChange={(e) => handleFilterChange('orderBy', e.target.value)}
                     className="input w-full"
+                    disabled={loading}
                   >
                     {SORT_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -220,34 +172,29 @@ export default function CardsPage() {
                     ))}
                   </select>
                 </div>
-
-                {/* API Provider Selector */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <CogIcon className="inline h-4 w-4 mr-1" />
-                    Fuente de Datos
-                  </label>
-                  <select
-                    value={currentAPI}
-                    onChange={(e) => dispatch(setAPIProvider(e.target.value))}
-                    className="input w-full"
-                  >
-                    <option value="auto">Automático (Mejor disponible)</option>
-                    <option value="pokemon-tcg">Pokemon TCG API (Oficial)</option>
-                    <option value="precios-tcg">PreciosTCG (Precios Argentina)</option>
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {currentAPI === 'auto' && 'Usa la mejor API disponible automáticamente'}
-                    {currentAPI === 'pokemon-tcg' && 'Datos oficiales de Pokemon TCG con imágenes HD'}
-                    {currentAPI === 'precios-tcg' && 'Precios en pesos argentinos actualizados'}
-                  </p>
-                </div>
               </div>
             </div>
           </div>
 
           {/* Main content */}
           <div className="flex-1">
+            {/* Loading Overlay */}
+            {loading && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">
+                      🔍 Buscando "{filters.name}" en TCGPlayer...
+                    </p>
+                    <p className="text-xs text-blue-600 mt-0.5">
+                      Obteniendo precios actualizados del mercado
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Toolbar */}
             <div className="bg-white rounded-card shadow-sm border border-gray-200 p-4 mb-6">
               <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -266,9 +213,15 @@ export default function CardsPage() {
                   </button>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">
-                      {pagination.totalCount} cartas encontradas
-                    </span>
+                    {loading ? (
+                      <span className="text-sm text-blue-600 animate-pulse">
+                        Cargando...
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-500">
+                        {pagination.totalCount} cartas encontradas
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -306,22 +259,29 @@ export default function CardsPage() {
             {/* Cards grid */}
             {loading ? (
               <div className={viewMode === 'grid' ? 'grid-cards' : 'space-y-4'}>
-                {[...Array(pagination.pageSize)].map((_, i) => (
-                  <div key={i} className="card animate-pulse">
-                    <div className="aspect-card bg-gray-200 rounded-t-card"></div>
+                {[...Array(12)].map((_, i) => (
+                  <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div className="aspect-[2.5/3.5] bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse"></div>
                     <div className="p-4 space-y-3">
-                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                      <div className="h-8 bg-gray-200 rounded"></div>
+                      <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                      <div className="flex gap-2">
+                        <div className="h-6 bg-gray-200 rounded w-16 animate-pulse"></div>
+                        <div className="h-6 bg-gray-200 rounded w-20 animate-pulse"></div>
+                      </div>
+                      <div className="h-8 bg-blue-100 rounded animate-pulse"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/3 animate-pulse"></div>
+                      <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : error ? (
-              <div className="text-center py-12">
-                <p className="text-red-600 mb-4">Error al cargar las cartas</p>
+              <div className="text-center py-12 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-600 mb-4 font-medium">Error al cargar las cartas</p>
+                <p className="text-sm text-red-500 mb-4">{error}</p>
                 <button
-                  onClick={() => dispatch(fetchCards({ filters, apiProvider: currentAPI }) as any)}
+                  onClick={() => dispatch(fetchCards({ filters }) as any)}
                   className="btn btn-primary"
                 >
                   Reintentar
