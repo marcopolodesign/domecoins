@@ -19,6 +19,15 @@ interface Card {
   attacks?: any[];
   hp?: string | number;
   nationalPokedexNumbers?: number[];
+  // TCGPlayer pricing data
+  pricing?: {
+    marketPrice?: number;
+    lowPrice?: number;
+    midPrice?: number;
+    highPrice?: number;
+    source?: string;
+    lastUpdated?: string;
+  };
 }
 
 interface Set {
@@ -79,7 +88,6 @@ export const fetchCards = createAsyncThunk(
     
     const searchParams = new URLSearchParams();
     if (filters.name) searchParams.set('query', filters.name);
-    if (apiProvider) searchParams.set('provider', apiProvider);
     if (filters.page) searchParams.set('page', filters.page.toString());
     if (filters.pageSize) searchParams.set('pageSize', filters.pageSize.toString());
     if (filters.orderBy) searchParams.set('orderBy', filters.orderBy);
@@ -87,7 +95,10 @@ export const fetchCards = createAsyncThunk(
     if (filters.types && filters.types.length > 0) searchParams.set('types', filters.types.join(','));
     if (filters.rarity) searchParams.set('rarity', filters.rarity);
 
-    const response = await fetch(`/api/search?${searchParams.toString()}`);
+    // ALWAYS use search-with-prices to get real TCGPlayer pricing
+    const endpoint = '/api/search-with-prices';
+
+    const response = await fetch(`${endpoint}?${searchParams.toString()}`);
     
     if (!response.ok) {
       throw new Error(`API error: ${response.status}`);
@@ -227,13 +238,13 @@ export const fetchSets = createAsyncThunk(
 export const fetchCardById = createAsyncThunk(
   'products/fetchCardById',
   async (params: { id: string; apiProvider?: string } = { id: '', apiProvider: 'auto' }) => {
-    const { id, apiProvider } = params;
+    const { id } = params;
     
     const searchParams = new URLSearchParams();
     searchParams.set('query', id);
-    if (apiProvider) searchParams.set('provider', apiProvider);
     
-    const response = await fetch(`/api/search?${searchParams.toString()}`);
+    // ALWAYS use search-with-prices for real TCGPlayer pricing
+    const response = await fetch(`/api/search-with-prices?${searchParams.toString()}`);
     
     if (!response.ok) {
       throw new Error(`API error: ${response.status}`);

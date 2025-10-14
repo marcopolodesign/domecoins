@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import ProductCard from '@/components/ProductCard';
 
 interface PreciosCard {
   name: string;
@@ -46,9 +46,9 @@ export default function SearchPage() {
     setError('');
 
     try {
-      // Use unified search API
+      // Use search-with-prices API for real TCGPlayer pricing
       const response = await fetch(
-        `/api/search?query=${encodeURIComponent(query)}&provider=precios-tcg`
+        `/api/search-with-prices?query=${encodeURIComponent(query)}&pageSize=20`
       );
 
       if (!response.ok) {
@@ -153,43 +153,11 @@ export default function SearchPage() {
         ) : cards.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {cards.map((card, index) => (
-              <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200">
-                <div className="aspect-[2.5/3.5] relative">
-                  <Image
-                    src={card.imageUrl || '/placeholder-card.svg'}
-                    alt={card.name}
-                    fill
-                    className="object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = '/placeholder-card.svg';
-                    }}
-                  />
-                </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
-                    {card.name}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-2">{card.categoryName}</p>
-                  <div className="space-y-1">
-                    {card.offers.slice(0, 3).map((offer, offerIndex) => (
-                      <p key={offerIndex} className="text-sm font-medium text-primary-600">
-                        {offer}
-                      </p>
-                    ))}
-                    {card.outOfStockPrice && (
-                      <p className="text-sm text-gray-500">
-                        Agotado: {card.outOfStockPrice}
-                      </p>
-                    )}
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    <span className="text-xs text-gray-500 uppercase">
-                      {card.provider}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <ProductCard
+                key={card.id || index}
+                card={card}
+                showAddToCart={true}
+              />
             ))}
           </div>
         ) : searchQuery && !loading ? (

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useSearchParams } from 'next/navigation'
 import { FunnelIcon, Squares2X2Icon, Bars3Icon, CogIcon } from '@heroicons/react/24/outline'
-import PokemonCard from '@/components/PokemonCard'
+import ProductCard from '@/components/ProductCard'
 import { RootState } from '@/store'
 import { fetchCards, setFilters, setPage, setPageSize, setAPIProvider } from '@/store/productsSlice'
 import { fetchSets } from '@/store/productsSlice'
@@ -338,9 +338,10 @@ export default function CardsPage() {
               <>
                 <div className={viewMode === 'grid' ? 'grid-cards' : 'space-y-4'}>
                   {cards.map((card) => (
-                    <PokemonCard 
+                    <ProductCard 
                       key={card.id} 
                       card={card}
+                      showAddToCart={true}
                       className={viewMode === 'list' ? 'flex flex-row h-32' : ''}
                     />
                   ))}
