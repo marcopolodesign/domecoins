@@ -1,0 +1,6 @@
+🚀 Starting Pokémon TCG data sync...
+
+📁 Data will be saved to: /Users/mataldao/Local/pokemon-tcg-shop/data/pokemon-tcg
+
+📦 Fetching all sets...
+Attempt 1 failed: HTTP 504: Gateway Timeout

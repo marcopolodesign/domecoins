@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokemon TCG Set Downloader</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .api-key-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .api-key-section label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .api-key-section input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: monospace;
+        }
+        
+        .api-key-section input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .api-key-section small {
+            display: block;
+            margin-top: 8px;
+            color: #666;
+        }
+        
+        .set-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+        
+        .set-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .set-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .set-name {
+            font-weight: 600;
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .set-id {
+            font-family: monospace;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .set-info {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .status {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-downloading {
+            background: #dbeafe;
+            color: #1e40af;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .download-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .download-btn:active {
+            transform: translateY(0);
+        }
+        
+        .download-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .test-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 10px;
+        }
+        
+        .test-btn:hover {
+            background: #059669;
+        }
+        
+        .test-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 2px solid #93c5fd;
+        }
+        
+        .alert-warning {
+            background: #fef3c7;
+            color: #92400e;
+            border: 2px solid #fcd34d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎴 Pokemon TCG Set Downloader</h1>
+        <p class="subtitle">Download real card data directly from your browser</p>
+        
+        <div class="alert alert-info">
+            <strong>ℹ️ How it works:</strong> This tool downloads data directly from api.pokemontcg.io through your browser, 
+            bypassing the network restrictions that block server-side requests.
+        </div>
+        
+        <div class="api-key-section">
+            <label for="apiKey">Pokemon TCG API Key (Optional but Recommended)</label>
+            <input 
+                type="text" 
+                id="apiKey" 
+                placeholder="445630f3-81ff-43ee-aa1f-9e8c56bdfd08"
+                value="445630f3-81ff-43ee-aa1f-9e8c56bdfd08"
+            />
+            <small>Get your API key from <a href="https://dev.pokemontcg.io/" target="_blank">dev.pokemontcg.io</a> for better rate limits (20,000/day vs 1,000/day)</small>
+        </div>
+        
+        <div id="sets-container">
+            <!-- Sets will be added here by JavaScript -->
+        </div>
+        
+        <button id="downloadAll" class="download-btn">
+            Download All Sets
+        </button>
+        
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        const SETS = [
+            { id: 'swsh12pt5', name: 'Crown Zenith', expectedCards: 160 },
+            { id: 'cel25', name: 'Celebrations', expectedCards: 50 },
+            { id: 'sv9pt5', name: 'Destined Rivals', expectedCards: 94 }
+        ];
+
+        let downloadedData = {};
+
+        // Initialize UI
+        function initUI() {
+            const container = document.getElementById('sets-container');
+            
+            SETS.forEach(set => {
+                const setCard = document.createElement('div');
+                setCard.className = 'set-card';
+                setCard.id = `set-${set.id}`;
+                setCard.innerHTML = `
+                    <div class="set-header">
+                        <div>
+                            <div class="set-name">${set.name}</div>
+                            <div class="set-id">${set.id} • ~${set.expectedCards} cards</div>
+                        </div>
+                        <span class="status status-pending" id="status-${set.id}">Pending</span>
+                    </div>
+                    <div class="set-info" id="info-${set.id}">Ready to download</div>
+                    <div class="progress-bar" id="progress-${set.id}">
+                        <div class="progress-fill" id="progress-fill-${set.id}"></div>
+                    </div>
+                    <button class="test-btn" onclick="testSingleSet('${set.id}', '${set.name}')">Test Download</button>
+                `;
+                container.appendChild(setCard);
+            });
+        }
+
+        // Logging
+        function log(message, type = 'info') {
+            const logEl = document.getElementById('log');
+            logEl.style.display = 'block';
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        // Update set status
+        function updateSetStatus(setId, status, info) {
+            const statusEl = document.getElementById(`status-${setId}`);
+            const infoEl = document.getElementById(`info-${setId}`);
+            
+            statusEl.className = `status status-${status}`;
+            statusEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+            
+            if (info) {
+                infoEl.textContent = info;
+            }
+        }
+
+        // Show progress
+        function updateProgress(setId, percent) {
+            const progressBar = document.getElementById(`progress-${setId}`);
+            const progressFill = document.getElementById(`progress-fill-${setId}`);
+            
+            progressBar.style.display = 'block';
+            progressFill.style.width = `${percent}%`;
+        }
+
+        // Download a single set
+        async function downloadSet(set) {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            
+            updateSetStatus(set.id, 'downloading', 'Fetching cards...');
+            updateProgress(set.id, 10);
+            log(`Starting download: ${set.name} (${set.id})`);
+
+            try {
+                const headers = {
+                    'Accept': 'application/json',
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+                };
+                
+                if (apiKey) {
+                    headers['X-Api-Key'] = apiKey;
+                    log(`Using API key: ${apiKey.substring(0, 8)}...`);
+                }
+
+                updateProgress(set.id, 30);
+                
+                // Download cards (most sets fit in 1 page with pageSize=250)
+                const url = `https://api.pokemontcg.io/v2/cards?q=set.id:${set.id}&pageSize=250&page=1`;
+                log(`Fetching from API: ${url}`);
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+                
+                const response = await fetch(url, { 
+                    headers,
+                    signal: controller.signal,
+                    mode: 'cors'
+                });
+                
+                clearTimeout(timeoutId);
+                
+                log(`Response status: ${response.status} ${response.statusText}`);
+                
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => 'Unable to read error');
+                    log(`Error response: ${errorText.substring(0, 200)}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                updateProgress(set.id, 60);
+                
+                log(`Parsing JSON response...`);
+                const data = await response.json();
+                
+                log(`Response structure: totalCount=${data.totalCount}, count=${data.count}, data.length=${data.data?.length || 0}`);
+                
+                const cards = data.data || [];
+                
+                updateProgress(set.id, 80);
+                
+                if (cards.length === 0) {
+                    log(`Warning: API returned 0 cards. Full response keys: ${Object.keys(data).join(', ')}`);
+                    throw new Error('No cards found in response');
+                }
+                
+                // Store data
+                downloadedData[set.id] = cards;
+                
+                updateProgress(set.id, 100);
+                updateSetStatus(set.id, 'success', `Downloaded ${cards.length} cards`);
+                log(`✓ ${set.name}: ${cards.length} cards downloaded successfully`);
+                
+                return cards;
+                
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    updateSetStatus(set.id, 'error', 'Request timeout (30s)');
+                    log(`✗ ${set.name}: Request timed out after 30 seconds`, 'error');
+                } else {
+                    updateSetStatus(set.id, 'error', error.message);
+                    log(`✗ ${set.name}: ${error.message}`, 'error');
+                    log(`Error details: ${error.stack || 'No stack trace'}`, 'error');
+                }
+                throw error;
+            }
+        }
+
+        // Download all sets
+        async function downloadAllSets() {
+            const btn = document.getElementById('downloadAll');
+            btn.disabled = true;
+            btn.textContent = 'Downloading...';
+            
+            log('=== Starting download process ===');
+            
+            let successCount = 0;
+            
+            for (const set of SETS) {
+                try {
+                    await downloadSet(set);
+                    successCount++;
+                    
+                    // Rate limiting delay
+                    if (SETS.indexOf(set) < SETS.length - 1) {
+                        log('Waiting 2 seconds before next download...');
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+                } catch (error) {
+                    log(`Failed to download ${set.name}, continuing...`);
+                }
+            }
+            
+            log(`=== Download complete: ${successCount}/${SETS.length} sets ===`);
+            
+            if (successCount > 0) {
+                btn.textContent = 'Save Downloaded Files';
+                btn.disabled = false;
+                btn.onclick = saveAllFiles;
+            } else {
+                btn.textContent = 'Download Failed - Try Again';
+                btn.disabled = false;
+            }
+        }
+
+        // Save all downloaded files
+        function saveAllFiles() {
+            log('=== Saving files ===');
+            
+            Object.keys(downloadedData).forEach(setId => {
+                const cards = downloadedData[setId];
+                const filename = `${setId}-full.json`;
+                const json = JSON.stringify(cards, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                log(`💾 Saved: ${filename} (${(blob.size / 1024).toFixed(1)}KB)`);
+            });
+            
+            log('=== All files saved ===');
+            log('📁 Move these files to: data/pokemon-tcg/');
+            log('🔄 Then restart your Next.js server');
+        }
+
+        // Test single set
+        async function testSingleSet(setId, setName) {
+            log(`=== Testing ${setName} (${setId}) ===`);
+            
+            const set = SETS.find(s => s.id === setId);
+            if (!set) {
+                log('Set not found!', 'error');
+                return;
+            }
+            
+            try {
+                await downloadSet(set);
+                log(`✓ Test successful! Ready to save.`);
+                
+                // Offer to download just this one
+                const filename = `${setId}-full.json`;
+                const json = JSON.stringify(downloadedData[setId], null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                log(`💾 Downloaded: ${filename}`);
+            } catch (error) {
+                log(`✗ Test failed. Check the error messages above.`, 'error');
+            }
+        }
+        
+        // Initialize
+        initUI();
+        document.getElementById('downloadAll').addEventListener('click', downloadAllSets);
+        
+        log('Ready to download!');
+        log('💡 Tip: Use "Test Download" buttons to test individual sets');
+        log('Or click "Download All Sets" to download everything at once.');
+    </script>
+</body>
+</html>
+

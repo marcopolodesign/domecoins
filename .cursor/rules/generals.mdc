@@ -1,0 +1,8 @@
+---
+description: General API Usage
+globs:
+alwaysApply: true
+---
+
+
+- https://docs.pokemontcg.io/api-reference use this for API documentation usage
