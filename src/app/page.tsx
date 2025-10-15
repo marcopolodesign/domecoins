@@ -154,8 +154,77 @@ export default function HomePage() {
       {/* Featured Cards Section */}
       <section className="relative -mt-28">
         <div className="container-custom">
-       
-          <div className="relative flex justify-center items-center min-h-[400px]">
+        
+          {/* Mobile: Horizontal scroll */}
+          <div className="md:hidden w-full overflow-x-scroll pb-4">
+            <div className="flex gap-4 px-4" style={{ width: 'max-content' }}>
+              {loading ? (
+                // Loading skeleton
+                [...Array(5)].map((_, index) => (
+                  <div
+                    key={index}
+                    className="flex-shrink-0 animate-pulse"
+                  >
+                    <div className="w-48 h-64 bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg border-2 border-gray-200">
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-12 h-12 bg-gray-400 rounded-full animate-pulse"></div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                featuredCards.map((card) => {
+                  // Get card type from customAttributes
+                  const cardType = card.customAttributes?.cardType?.[0] || 'Pokemon';
+                  const energyType = card.customAttributes?.energyType?.[0] || '';
+                  
+                  return (
+                    <div
+                      key={card.productId}
+                      className="flex-shrink-0"
+                    >
+                      <div className="relative group cursor-pointer">
+                        <div className="w-48 h-64 bg-white rounded-lg shadow-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition-colors duration-300">
+                          {/* Card image with proper fallback */}
+                          <div className="w-full h-full relative">
+                            <img
+                              src={`https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_400x400.jpg`}
+                              alt={card.productName}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                // Fallback to Pokemon TCG card back
+                                const target = e.target as HTMLImageElement;
+                                target.src = 'https://images.pokemontcg.io/250300/hires.png';
+                              }}
+                            />
+                            
+                            {/* Card information on hover overlay */}
+                            <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                              <div className="text-center text-white p-4">
+                                <h3 className="text-lg font-bold mb-2">{card.productName}</h3>
+                                <div className="space-y-1 text-sm">
+                                  <p>{energyType || cardType}</p>
+                                  <p>{card.rarityName}</p>
+                                  <p>{card.setName}</p>
+                                  <p className="text-yellow-400 font-semibold">${card.marketPrice.toFixed(2)}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Hover effect overlay */}
+                        <div className="absolute inset-0 bg-blue-500/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Desktop: Stacked cards */}
+          <div className="hidden md:flex relative justify-center items-center min-h-[400px]">
             {loading ? (
               // Loading skeleton
               [...Array(5)].map((_, index) => (
@@ -236,8 +305,8 @@ export default function HomePage() {
                     </div>
                   </div>
                 );
-              })
-            )}
+            })
+          )}
           </div>
           
           {/* Floating action button */}
