@@ -255,6 +255,18 @@ export default function HomePage() {
         </div>
       </section>
 
+       {/* Reusable Cards Section */}
+       <ReusableCardsBlock 
+        title="Cartas en stock"
+        subtitle="Disponibles para entrega inmediata"
+        cardIds={[250309, 250314, 250300, 250317, 250303, 250305]}
+        showRefreshButton={false}
+        showFloatingButton={true}
+        floatingButtonText="Ver Todas las Cartas"
+        floatingButtonHref="/cards"
+        className="py-16 bg-gradient-to-b from-white to-gray-50"
+      />
+
       {/* Features Section */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
