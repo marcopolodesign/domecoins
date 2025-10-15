@@ -152,11 +152,11 @@ export default function HomePage() {
       </section>
 
       {/* Featured Cards Section */}
-      <section className="relative -mt-28">
+      <section className="relative -mt-12 md:-mt-28">
         <div className="container-custom">
         
           {/* Mobile: Horizontal scroll */}
-          <div className="md:hidden w-full overflow-x-scroll pb-4">
+          <div className="md:hidden w-full overflow-x-scroll pb-4 hide-scrollbar">
             <div className="flex gap-4 px-4" style={{ width: 'max-content' }}>
               {loading ? (
                 // Loading skeleton
