@@ -20,17 +20,13 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const includePrices = searchParams.get('prices') !== 'false'; // default true
     
-    if (!query) {
-      return NextResponse.json(
-        { error: 'Query parameter is required' },
-        { status: 400 }
-      );
-    }
+    // Use default search if no query provided
+    const searchQuery = query || 'pokemon';
 
-    console.log(`[SearchWithPrices] Query: ${query}, includePrices: ${includePrices}`);
+    console.log(`[SearchWithPrices] Query: ${searchQuery}, includePrices: ${includePrices}`);
 
     // Step 1: Get card data from local GitHub data (FAST)
-    const localResults = await searchLocalCards(query, {
+    const localResults = await searchLocalCards(searchQuery, {
       pageSize,
       page,
     });
@@ -45,7 +41,7 @@ export async function GET(request: NextRequest) {
         console.log(`[SearchWithPrices] Fetching prices from TCGPlayer...`);
         
         // Search TCGPlayer with the same query
-        const tcgPrices = await searchTCGPlayerPrices(query);
+        const tcgPrices = await searchTCGPlayerPrices(searchQuery);
         
         console.log(`[SearchWithPrices] Got ${tcgPrices.length} price results from TCGPlayer`);
         

@@ -72,6 +72,8 @@ const config: Config = {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['Poppins', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
+        thunder: ['Thunder Bold', 'system-ui', 'sans-serif'],
+        tt: ['TT Interphases Pro', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         'xs': ['0.75rem', { lineHeight: '1rem' }],

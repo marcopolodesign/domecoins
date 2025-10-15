@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { ChevronRightIcon, SparklesIcon, TruckIcon, CreditCardIcon } from '@heroicons/react/24/outline';
 import SearchBox from '@/components/SearchBox';
 
@@ -22,42 +23,234 @@ const features = [
   },
 ];
 
-const heroSets = [
-  {
-    name: 'Scarlet & Violet',
-    description: 'Las cartas más nuevas de la región de Paldea',
-    image: '/hero-sv.jpg',
-    href: '/sets/sv',
-  },
-  {
-    name: 'Pokémon GO',
-    description: 'Colección especial de Pokémon GO',
-    image: '/hero-pogo.jpg',
-    href: '/sets/pgo',
-  },
-];
+// Interface for TCGPlayer card data
+interface TCGPlayerCard {
+  productId: number;
+  productName: string;
+  marketPrice: number;
+  lowestPrice: number;
+  setName: string;
+  rarityName: string;
+  customAttributes: {
+    cardType: string[];
+    energyType: string[];
+  };
+}
 
 export default function HomePage() {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-white">
+  const [featuredCards, setFeaturedCards] = useState<TCGPlayerCard[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  // Fetch featured cards from local JSON data
+  useEffect(() => {
+    const fetchFeaturedCards = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch from local JSON file
+        const response = await fetch('/data/tcgplayer-featured-cards.json');
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.results && data.results.length > 0 && data.results[0].results) {
+            const allCards = data.results[0].results;
+            
+            // Randomly select 5 cards from the available cards
+            const shuffled = [...allCards].sort(() => 0.5 - Math.random());
+            const selectedCards = shuffled.slice(0, 5).map((result: TCGPlayerCard) => ({
+              productId: result.productId,
+              productName: result.productName,
+              marketPrice: result.marketPrice || result.lowestPrice || 0,
+              lowestPrice: result.lowestPrice || 0,
+              setName: result.setName || 'Unknown Set',
+              rarityName: result.rarityName || 'Unknown',
+              customAttributes: result.customAttributes || { cardType: [], energyType: [] }
+            }));
+            setFeaturedCards(selectedCards);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching featured cards:', error);
+        // Fallback to placeholder cards
+        setFeaturedCards([
+          {
+            productId: 250309,
+            productName: 'Mew',
+            marketPrice: 4.22,
+            lowestPrice: 0.62,
+            setName: 'Celebrations',
+            rarityName: 'Holo Rare',
+            customAttributes: { cardType: ['Pokemon'], energyType: ['Psychic'] }
+          },
+          {
+            productId: 250314,
+            productName: 'Groudon',
+            marketPrice: 0.40,
+            lowestPrice: 0.04,
+            setName: 'Celebrations',
+            rarityName: 'Holo Rare',
+            customAttributes: { cardType: ['Pokemon'], energyType: ['Fighting'] }
+          },
+          {
+            productId: 250300,
+            productName: 'Ho-Oh',
+            marketPrice: 0.27,
+            lowestPrice: 0.01,
+            setName: 'Celebrations',
+            rarityName: 'Holo Rare',
+            customAttributes: { cardType: ['Pokemon'], energyType: ['Fire'] }
+          },
+          {
+            productId: 250317,
+            productName: 'Lugia',
+            marketPrice: 0.81,
+            lowestPrice: 0.06,
+            setName: 'Celebrations',
+            rarityName: 'Holo Rare',
+            customAttributes: { cardType: ['Pokemon'], energyType: ['Colorless'] }
+          },
+          {
+            productId: 250303,
+            productName: 'Pikachu',
+            marketPrice: 5.29,
+            lowestPrice: 1.99,
+            setName: 'Celebrations',
+            rarityName: 'Holo Rare',
+            customAttributes: { cardType: ['Pokemon'], energyType: ['Lightning'] }
+          }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFeaturedCards();
+  }, []);
+
+
+
+  return (
+    <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary-600/20 to-secondary-600/20"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+      <section className="relative overflow-hidden hero-bg">
+        <div className="absolute inset-0 bg-black/30"></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-40 pb-24">
           <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
+            <h1 className="text-4xl md:text-6xl font-bold text-white font-thunder mb-6">
               <span className="block">BUSCA Y COMPARA PRECIOS DE CARTAS</span>
             </h1>
-            <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto">
+            <p className="text-xl text-white/90 font-interphases mb-12 max-w-3xl mx-auto">
               Mejora tu experiencia de búsqueda con resultados unificados, conversión automática de monedas y listas de compra inteligentes.
             </p>
-            
             {/* Hero Search */}
             <div className="mt-8">
               <SearchBox variant="hero" placeholder='Probá buscando "Pikachu Crown"' />
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Featured Cards Section */}
+      <section className="relative -mt-28">
+        <div className="container-custom">
+       
+          <div className="relative flex justify-center items-center min-h-[400px]">
+            {loading ? (
+              // Loading skeleton
+              [...Array(5)].map((_, index) => (
+                <div
+                  key={index}
+                  className="absolute transform animate-pulse"
+                  style={{
+                    left: `${15 + index * 15}%`,
+                    zIndex: index,
+                  }}
+                >
+                  <div className="w-48 h-64 bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg border-2 border-gray-200">
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-12 h-12 bg-gray-400 rounded-full animate-pulse"></div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              featuredCards.map((card, index) => {
+              // Generate random rotation and translation values
+              const rotation = index % 2 === 0 
+                ? Math.random() * 15 - 7.5  // -7.5 to 7.5 degrees
+                : Math.random() * -15 + 7.5; // -7.5 to 7.5 degrees
+              
+              const translateX = index % 2 === 0
+                ? Math.random() * 20 - 10    // -10 to 10px
+                : Math.random() * -20 + 10;  // -10 to 10px
+              
+              const translateY = Math.random() * 10 - 5; // -5 to 5px
+              
+                // Get card type from customAttributes
+                const cardType = card.customAttributes?.cardType?.[0] || 'Pokemon';
+                const energyType = card.customAttributes?.energyType?.[0] || '';
+                
+                return (
+                  <div
+                    key={card.productId}
+                    className="absolute transform transition-all duration-300 hover:scale-110 hover:z-10"
+                    style={{
+                      transform: `rotate(${rotation}deg) translate(${translateX}px, ${translateY}px)`,
+                      zIndex: index,
+                      left: `${15 + index * 15}%`, // Distribute cards across the width
+                    }}
+                  >
+                    <div className="relative group cursor-pointer">
+                      <div className="w-48 h-64 bg-white rounded-lg shadow-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition-colors duration-300">
+                        {/* Card image with proper fallback */}
+                        <div className="w-full h-full relative">
+                          <img
+                            src={`https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_400x400.jpg`}
+                            alt={card.productName}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback to Pokemon TCG card back
+                              const target = e.target as HTMLImageElement;
+                              target.src = 'https://images.pokemontcg.io/250300/hires.png';
+                            }}
+                          />
+                          
+                          {/* Card information on hover overlay */}
+                          <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                            <div className="text-center text-white p-4">
+                              <h3 className="text-lg font-bold mb-2">{card.productName}</h3>
+                              <div className="space-y-1 text-sm">
+                                <p>{energyType || cardType}</p>
+                                <p>{card.rarityName}</p>
+                                <p>{card.setName}</p>
+                                <p className="text-yellow-400 font-semibold">${card.marketPrice.toFixed(2)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Hover effect overlay */}
+                      <div className="absolute inset-0 bg-blue-500/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          
+          {/* Floating action button */}
+          {/* <div className="text-center mt-16">
+            <Link 
+              href="/cards" 
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-full font-semibold hover:shadow-lg transition-all duration-300 hover:scale-105"
+            >
+              Ver Todas las Cartas
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </Link>
+          </div> */}
         </div>
       </section>
 
@@ -76,10 +269,8 @@ export default function HomePage() {
           <div className="grid md:grid-cols-3 gap-8">
             {features.map((feature) => (
               <div key={feature.name} className="card-hover p-6 text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-primary-100 rounded-lg mb-4">
-                  <feature.icon className="h-6 w-6 text-primary-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{feature.name}</h3>
+                <feature.icon className="mx-auto h-12 w-12 text-blue-600 mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.name}</h3>
                 <p className="text-gray-600">{feature.description}</p>
               </div>
             ))}
@@ -87,74 +278,25 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Hero Sets Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Sets Destacados
-            </h2>
-            <p className="text-lg text-gray-600">
-              Explora las colecciones más populares
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-8">
-            {heroSets.map((set) => (
-              <Link key={set.name} href={set.href} className="card-hover overflow-hidden group">
-                <div className="aspect-[16/9] bg-gradient-to-r from-primary-400 to-secondary-400 relative">
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors duration-200"></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center text-white">
-                      <h3 className="text-2xl font-bold mb-2">{set.name}</h3>
-                      <p className="text-lg opacity-90">{set.description}</p>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-16 bg-primary-600">
+      {/* Call to Action Section */}
+      <section className="bg-blue-600 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">
-            ¡Comienza tu búsqueda ahora!
+          <h2 className="text-3xl font-bold mb-4">
+            Encuentra tu próxima carta favorita
           </h2>
-          <p className="text-xl text-primary-100 mb-8">
-            Accede a miles de cartas con precios actualizados
+          <p className="text-lg mb-8">
+            Explora nuestra vasta colección y descubre ofertas increíbles.
           </p>
-          <Link href="/search" className="btn bg-white text-primary-600 hover:bg-gray-50 btn-lg">
-            Buscar Cartas Pokémon
-            <ChevronRightIcon className="ml-2 h-5 w-5" />
+          <Link 
+            href="/cards" 
+            className="inline-flex items-center gap-2 bg-white text-blue-600 px-8 py-4 rounded-full font-semibold hover:bg-gray-100 transition-colors duration-200"
+          >
+            Explorar Cartas
+            <ChevronRightIcon className="h-5 w-5" />
           </Link>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">Pokemon TCG Argentina</h3>
-            <p className="text-gray-400 mb-4">
-              Tu tienda de confianza para cartas Pokémon en Argentina
-            </p>
-            <div className="flex justify-center space-x-6">
-              <Link href="/search" className="text-gray-400 hover:text-white">
-                Buscar
-              </Link>
-              <Link href="/cards" className="text-gray-400 hover:text-white">
-                Cartas
-              </Link>
-              <Link href="/sets" className="text-gray-400 hover:text-white">
-                Sets
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

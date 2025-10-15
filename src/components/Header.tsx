@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useDispatch, useSelector } from 'react-redux'
@@ -58,28 +58,61 @@ export default function Header() {
   const pathname = usePathname()
   const cartItems = useSelector((state: RootState) => state.cart.items)
   const cartTotal = useSelector((state: RootState) => state.cart.total)
+  const headerRef = useRef<HTMLDivElement>(null)
   const noticesRef = useRef<HTMLDivElement>(null)
+  const [isScrolled, setIsScrolled] = useState(false)
   
   const isHomePage = pathname === '/'
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0)
 
-  // GSAP scroll animation for notices
+  // GSAP scroll animation for header
   useEffect(() => {
-    if (noticesRef.current) {
+    if (headerRef.current && noticesRef.current) {
+      const header = headerRef.current
       const notices = noticesRef.current
       
-      // Create scroll trigger for notices
+      // Create scroll trigger for header animations
       ScrollTrigger.create({
         trigger: document.body,
         start: "top top",
         end: "max",
         onUpdate: (self) => {
-          const progress = self.progress
-          // Transform notices off screen when scrolling down
-          gsap.set(notices, {
-            y: progress > 0.1 ? -notices.offsetHeight : 0,
-            ease: "power2.out"
-          })
+          const scrollY = self.scroll()
+          
+          // Smooth animations for notices and header
+          if (scrollY > 50) {
+            setIsScrolled(true)
+            
+            // Move notices up smoothly
+            gsap.to(notices, {
+              y: -notices.offsetHeight,
+              duration: 0.3,
+              ease: "power2.out"
+            })
+            
+            // Move header up slightly
+            gsap.to(header, {
+              y: -35,
+              duration: 0.3,
+              ease: "power2.out"
+            })
+          } else {
+            setIsScrolled(false)
+            
+            // Move notices back down
+            gsap.to(notices, {
+              y: 0,
+              duration: 0.3,
+              ease: "power2.out"
+            })
+            
+            // Move header back to original position
+            gsap.to(header, {
+              y: 0,
+              duration: 0.3,
+              ease: "power2.out"
+            })
+          }
         }
       })
     }
@@ -87,21 +120,23 @@ export default function Header() {
     return () => {
       ScrollTrigger.getAll().forEach(trigger => trigger.kill())
     }
-  }, [])
+  }, [isHomePage])
 
   const handleCartClick = () => {
     dispatch(toggleCart())
   }
 
-  // Determine header background color
-  const headerBgColor = isHomePage ? 'bg-transparent' : 'bg-[#F0F0F0]'
+  // Determine text colors based on page and scroll state
+  const textColor = (isHomePage && !isScrolled) ? 'text-white' : 'text-gray-900'
+  const logoTextColor = (isHomePage && !isScrolled) ? 'text-white' : 'text-gray-900'
+  const hoverColor = (isHomePage && !isScrolled) ? 'hover:text-white/80' : 'hover:text-blue-600'
 
   return (
-    <>
+    <div className="fixed top-0 left-0 right-0 z-50">
       {/* Notices Section */}
       <div 
         ref={noticesRef}
-        className="bg-gradient-to-r from-amber-500 to-orange-500 text-white relative z-50"
+        className="bg-gradient-to-r from-amber-500 to-orange-500 text-white relative transition-transform duration-300 ease-out"
       >
         <div className="container-custom py-3">
           <div className="flex items-center justify-center text-sm">
@@ -127,10 +162,17 @@ export default function Header() {
         </div>
       </div>
 
-      <Disclosure as="nav" className={`${headerBgColor} shadow-sm ${!isHomePage ? 'border-b border-gray-200' : ''}`}>
+      {/* Header Navigation */}
+      <Disclosure as="nav" ref={headerRef} className={`
+        transition-all duration-300 ease-out rounded-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8
+        ${(isHomePage && !isScrolled) 
+          ? 'bg-transparent ' 
+          : 'translate-y-20 bg-gray-300'
+        }
+      `}>
         {({ open }) => (
           <>
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="">
               <div className="flex justify-between items-center h-20">
                 {/* Logo */}
                 <div className="flex items-center">
@@ -148,7 +190,7 @@ export default function Header() {
                       </svg>
                     </div>
                     <div>
-                      <span className="text-2xl font-bold text-gray-900">
+                      <span className={`text-2xl font-bold ${logoTextColor}`}>
                         DomeTCG
                       </span>
                     </div>
@@ -156,20 +198,7 @@ export default function Header() {
                 </div>
 
                 {/* Center: Navigation or SearchBox */}
-                {isHomePage ? (
-                  // Home page: Show navigation links
-                  <div className="hidden md:flex items-center space-x-8">
-                    {navigation.map((item) => (
-                      <Link
-                        key={item.name}
-                        href={item.href}
-                        className="text-white hover:text-white/80 text-sm font-medium transition-colors duration-200"
-                      >
-                        {item.name}
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
+                {!isHomePage && (
                   // Other pages: Show search box in header
                   <div className="hidden md:block flex-1 max-w-2xl mx-8">
                     <SearchBox variant="header" />
@@ -178,10 +207,26 @@ export default function Header() {
 
                 {/* Right side: Cart and User */}
                 <div className="flex items-center space-x-6">
+
+                  {isHomePage && (
+                      // Home page: Show navigation links
+                      <div className="hidden md:flex items-center space-x-8 mr-8">
+                        {navigation.map((item) => (
+                          <Link
+                            key={item.name}
+                            href={item.href}
+                            className={`${textColor} ${hoverColor} text-sm font-medium transition-colors duration-200`}
+                          >
+                            {item.name}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                    
                   {/* Cart with total */}
                   <button
                     onClick={handleCartClick}
-                    className="flex items-center space-x-2 text-gray-900 hover:text-blue-600 transition-colors duration-200"
+                    className={`flex items-center space-x-2 ${textColor} ${hoverColor} transition-colors duration-200`}
                   >
                     <PokedexIcon count={totalItems} className="h-7 w-7" />
                     <span className="text-lg font-semibold">
@@ -190,12 +235,12 @@ export default function Header() {
                   </button>
 
                   {/* User icon */}
-                  <button className="text-gray-900 hover:text-blue-600 transition-colors duration-200">
+                  <button className={`${textColor} ${hoverColor} transition-colors duration-200`}>
                     <UserCircleIcon className="h-8 w-8" />
                   </button>
 
                   {/* Mobile menu button */}
-                  <Disclosure.Button className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-900 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500">
+                  <Disclosure.Button className={`md:hidden inline-flex items-center justify-center p-2 rounded-md ${textColor} hover:opacity-70 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500`}>
                     {open ? (
                       <XMarkIcon className="block h-6 w-6" />
                     ) : (
@@ -221,7 +266,7 @@ export default function Header() {
                   <Link
                     key={item.name}
                     href={item.href}
-                    className="text-gray-900 hover:text-blue-600 block px-3 py-2 rounded-md text-base font-medium"
+                    className={`${textColor} hover:text-blue-600 block px-3 py-2 rounded-md text-base font-medium`}
                   >
                     {item.name}
                   </Link>
@@ -231,6 +276,6 @@ export default function Header() {
           </>
         )}
       </Disclosure>
-    </>
+    </div>
   )
 }

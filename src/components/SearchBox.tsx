@@ -18,12 +18,22 @@ export default function SearchBox({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (searchQuery.trim()) {
+    const query = searchQuery.trim()
+    
+    if (query) {
       if (onSearch) {
-        onSearch(searchQuery)
+        onSearch(query)
       } else {
         // Default behavior: navigate to cards page with search filter
-        window.location.href = `/cards?search=${encodeURIComponent(searchQuery)}`
+        window.location.href = `/cards?search=${encodeURIComponent(query)}`
+      }
+    } else {
+      // Default search when no query is provided
+      if (onSearch) {
+        onSearch('')
+      } else {
+        // Navigate to cards page with default popular cards
+        window.location.href = `/cards?search=pokemon`
       }
     }
   }

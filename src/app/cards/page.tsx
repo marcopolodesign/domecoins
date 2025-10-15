@@ -42,13 +42,12 @@ export default function CardsPage() {
 
     const newFilters: any = {}
     
-    if (searchQuery) newFilters.name = searchQuery
+    // Set default search if no query provided
+    newFilters.name = searchQuery || 'pokemon'
     if (rarityFilter) newFilters.rarity = rarityFilter
 
-    if (Object.keys(newFilters).length > 0) {
-      dispatch(setFilters(newFilters))
-    }
-  }, [searchParams]) // Remove dispatch to prevent double call
+    dispatch(setFilters(newFilters))
+  }, [searchParams, dispatch])
 
   // Fetch data when filters change (prevents double call)
   useEffect(() => {
