@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
       return {
         id: `tcg-${priceData.productId}`,
         name: priceData.productName,
-        detailUrl: `https://www.tcgplayer.com/product/${priceData.productId}`,
-        imageUrl: `https://tcgplayer-cdn.tcgplayer.com/product/${priceData.productId}_200x200.jpg`,
+        detailUrl: priceData.url || `https://www.tcgplayer.com/product/${priceData.productId}`,
+        imageUrl: priceData.imageUrl || '/placeholder-card.svg',
         categoryName: priceData.setName || 'Unknown Set',
         offers: priceData.marketPrice 
           ? [`$${priceData.marketPrice.toFixed(2)}`]
