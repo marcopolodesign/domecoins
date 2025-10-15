@@ -41,7 +41,7 @@
   }
   
   body {
-    font-family: var(--font-interphases);
+    font-family: 'TT Interphases Pro', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
