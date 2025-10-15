@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useSearchParams } from 'next/navigation'
 import { FunnelIcon, Squares2X2Icon, Bars3Icon } from '@heroicons/react/24/outline'
@@ -21,7 +21,7 @@ const SORT_OPTIONS = [
   { value: 'number', label: 'Número' },
 ]
 
-export default function CardsPage() {
+function CardsPageContent() {
   const dispatch = useDispatch()
   const searchParams = useSearchParams()
   const [showFilters, setShowFilters] = useState(false)
@@ -336,5 +336,20 @@ export default function CardsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function CardsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="mt-4 text-gray-600">Cargando cartas...</p>
+        </div>
+      </div>
+    }>
+      <CardsPageContent />
+    </Suspense>
   )
 }
