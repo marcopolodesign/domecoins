@@ -283,7 +283,7 @@ export default function HomePage() {
       <ReusableCardsBlock 
         title="Cartas Más Vendidas"
         subtitle="Las cartas más populares de la semana"
-        randomCount={5}
+        randomCount={6}
         showRefreshButton={true}
         showFloatingButton={true}
         floatingButtonText="Ver Todas las Cartas"
