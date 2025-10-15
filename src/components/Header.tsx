@@ -190,7 +190,7 @@ export default function Header() {
                       </svg>
                     </div>
                     <div>
-                      <span className={`text-2xl font-bold ${logoTextColor}`}>
+                      <span className={`text-4xl font-thunder uppercase font-ultra leading-[1] block mt-1 ${logoTextColor}`}>
                         DomeTCG
                       </span>
                     </div>

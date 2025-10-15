@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ChevronRightIcon, SparklesIcon, TruckIcon, CreditCardIcon } from '@heroicons/react/24/outline';
 import SearchBox from '@/components/SearchBox';
+import ReusableCardsBlock from '@/components/ReusableCardsBlock';
 
 const features = [
   {
@@ -277,6 +278,18 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Reusable Cards Section */}
+      <ReusableCardsBlock 
+        title="Cartas Más Vendidas"
+        subtitle="Las cartas más populares de la semana"
+        randomCount={5}
+        showRefreshButton={true}
+        showFloatingButton={true}
+        floatingButtonText="Ver Todas las Cartas"
+        floatingButtonHref="/cards"
+        className="py-16 bg-gradient-to-b from-white to-gray-50"
+      />
 
       {/* Call to Action Section */}
       <section className="bg-blue-600 text-white py-16">
