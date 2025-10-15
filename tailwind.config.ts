@@ -74,6 +74,7 @@ const config: Config = {
         mono: ['JetBrains Mono', 'monospace'],
         thunder: ['Thunder Bold', 'system-ui', 'sans-serif'],
         tt: ['TT Interphases Pro', 'system-ui', 'sans-serif'],
+        interphases: ['TT Interphases Pro', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         'xs': ['0.75rem', { lineHeight: '1rem' }],
