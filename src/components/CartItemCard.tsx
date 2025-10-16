@@ -1,6 +1,6 @@
 'use client'
 
-import { MinusIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { TrashIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -8,7 +8,6 @@ interface CartItemCardProps {
   card: any // Same as ProductCard - accepts both PokemonCard and unified Card types
   quantity: number
   priceArs: number
-  onUpdateQuantity: (cardId: string, quantity: number) => void
   onRemoveItem: (cardId: string) => void
   onClose: () => void
 }
@@ -17,7 +16,6 @@ export default function CartItemCard({
   card, 
   quantity,
   priceArs,
-  onUpdateQuantity,
   onRemoveItem,
   onClose
 }: CartItemCardProps) {
@@ -73,36 +71,15 @@ export default function CartItemCard({
           )}
         </div>
         
-        {/* Quantity Controls and Remove Button */}
-        <div className="flex flex-1 items-end justify-between text-sm">
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => onUpdateQuantity(card.id, quantity - 1)}
-              className="p-1 rounded-md hover:bg-gray-100 transition-colors"
-              disabled={quantity <= 1}
-            >
-              <MinusIcon className="h-4 w-4 text-gray-400" />
-            </button>
-            <span className="text-gray-500 min-w-[2rem] text-center">
-              {quantity}
-            </span>
-            <button
-              onClick={() => onUpdateQuantity(card.id, quantity + 1)}
-              className="p-1 rounded-md hover:bg-gray-100 transition-colors"
-            >
-              <PlusIcon className="h-4 w-4 text-gray-400" />
-            </button>
-          </div>
-
-          <div className="flex">
-            <button
-              type="button"
-              onClick={() => onRemoveItem(card.id)}
-              className="p-1 text-red-600 hover:text-red-500 transition-colors"
-            >
-              <TrashIcon className="h-4 w-4" />
-            </button>
-          </div>
+        {/* Remove Button */}
+        <div className="flex flex-1 items-end justify-end text-sm">
+          <button
+            type="button"
+            onClick={() => onRemoveItem(card.id)}
+            className="p-1 text-red-600 hover:text-red-500 transition-colors"
+          >
+            <TrashIcon className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </li>
