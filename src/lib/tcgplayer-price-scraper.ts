@@ -27,11 +27,27 @@ export interface TCGPlayerPrice {
   imageUrl: string;
   inStock: boolean;
   totalListings: number;
-  rarity?: string;
+  rarity?: string; // Extracted from rarityName or customAttributes.rarityDbName
   cardNumber?: string;
   hp?: string;
   attacks?: string[];
   energyType?: string[];
+  customAttributes?: {
+    rarityDbName?: string;
+    number?: string;
+    hp?: string;
+    energyType?: string[];
+    attack1?: string;
+    attack2?: string;
+    attack3?: string;
+    attack4?: string;
+    stage?: string;
+    cardType?: string[];
+    retreatCost?: string;
+    resistance?: string;
+    weakness?: string;
+    flavorText?: string;
+  };
 }
 
 export interface TCGPlayerSearchResult {
@@ -119,6 +135,11 @@ export async function searchTCGPlayerPrices(
     
     console.log(`[TCGPlayer] Found ${products.length}/${firstResult.totalResults} products`);
     
+    // Log full structure of first product for debugging
+    if (products.length > 0) {
+      console.log('[TCGPlayer] FULL FIRST PRODUCT STRUCTURE:', JSON.stringify(products[0], null, 2));
+    }
+    
     // Transform API response to our format
     const cards: TCGPlayerPrice[] = products.map((product: any) => {
       // Extract attacks from customAttributes
@@ -128,6 +149,23 @@ export async function searchTCGPlayerPrices(
           if (product.customAttributes[key]) {
             attacks.push(product.customAttributes[key]);
           }
+        });
+      }
+      
+      // Extract rarity - prioritize rarityName from the product, fallback to customAttributes
+      const rarity = product.rarityName || 
+                     product.customAttributes?.rarityDbName || 
+                     product.rarity || 
+                     undefined;
+      
+      // Debug log for first product to check structure
+      if (products.indexOf(product) === 0) {
+        console.log('[TCGPlayer] First product rarity extraction:', {
+          productName: product.productName,
+          rarityName: product.rarityName,
+          rarityDbName: product.customAttributes?.rarityDbName,
+          extractedRarity: rarity,
+          SUCCESS: !!rarity
         });
       }
       
@@ -144,11 +182,12 @@ export async function searchTCGPlayerPrices(
         imageUrl: `https://product-images.tcgplayer.com/fit-in/437x437/${product.productId}.jpg`,
         inStock: (product.totalListings || 0) > 0,
         totalListings: product.totalListings || 0,
-        rarity: product.rarityName,
+        rarity,
         cardNumber: product.customAttributes?.number,
         hp: product.customAttributes?.hp,
         attacks,
         energyType: product.customAttributes?.energyType,
+        customAttributes: product.customAttributes, // Include full customAttributes for additional data
       };
     });
     

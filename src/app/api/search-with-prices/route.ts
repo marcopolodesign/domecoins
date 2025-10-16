@@ -46,6 +46,15 @@ export async function GET(request: NextRequest) {
       const stock = inventoryMap[priceData.productId.toString()] || 0;
       const inStock = stock > 0;
       
+      // Debug first card to check rarity
+      if (index === 0) {
+        console.log('[SearchWithPrices] First card rarity check:', {
+          productName: priceData.productName,
+          rarity: priceData.rarity,
+          hasRarity: !!priceData.rarity
+        });
+      }
+      
       return {
         id: `tcg-${priceData.productId}`,
         name: priceData.productName,
@@ -56,10 +65,10 @@ export async function GET(request: NextRequest) {
           ? [`$${priceData.marketPrice.toFixed(2)}`]
           : ['Price N/A'],
         provider: 'TCGPlayer',
-        rarity: priceData.rarityName || 'Unknown',
+        rarity: priceData.rarity || 'Unknown',
         setId: priceData.setId?.toString() || '',
         cardId: `tcg-${priceData.productId}`,
-        types: priceData.customAttributes?.energyType || [],
+        types: priceData.energyType || [],
         weaknesses: [],
         resistances: [],
         attacks: [],
