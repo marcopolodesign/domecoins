@@ -6,6 +6,7 @@ export interface CartItem {
   quantity: number;
   priceUsd: number;
   priceArs: number;
+  inStock: boolean; // Track if item is in stock or needs to be ordered
 }
 
 interface CartState {
@@ -31,7 +32,7 @@ const cartSlice = createSlice({
   initialState,
   reducers: {
     addToCart: (state, action: PayloadAction<Omit<CartItem, 'quantity'> & { quantity?: number }>) => {
-      const { card, priceUsd, priceArs, quantity = 1 } = action.payload;
+      const { card, priceUsd, priceArs, inStock, quantity = 1 } = action.payload;
       const existingItem = state.items.find(item => item.card.id === card.id);
 
       if (existingItem) {
@@ -42,6 +43,7 @@ const cartSlice = createSlice({
           quantity,
           priceUsd,
           priceArs,
+          inStock,
         });
       }
 

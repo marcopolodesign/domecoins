@@ -363,3 +363,277 @@ export async function clearCustomPrice(): Promise<void> {
     throw error;
   }
 }
+
+// ==================== ORDERS ====================
+
+const ORDER_KEY_PREFIX = 'order:';
+const ORDER_INDEX_KEY = 'order:_index';
+const ORDER_COUNTER_KEY = 'order:counter';
+
+export interface Order {
+  id: string;
+  orderNumber: string;
+  status: 'pending' | 'confirmed' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
+  createdAt: string;
+  updatedAt: string;
+  customer: {
+    firstName: string;
+    lastName: string;
+    dni: string;
+    phone: string;
+    email: string;
+    address: string;
+  };
+  items: Array<{
+    cardId: string;
+    cardName: string;
+    imageUrl: string;
+    setName: string;
+    rarity: string;
+    priceUsd: number;
+    priceArs: number;
+    inStock: boolean;
+  }>;
+  itemsInStock: number;
+  itemsToOrder: number;
+  totalArs: number;
+  totalUsd: number;
+  paymentMethod: 'transfer' | 'mercadopago' | null;
+  paymentLink: string | null;
+  paymentStatus: 'pending' | 'sent' | 'confirmed' | null;
+}
+
+/**
+ * Generate order number: ORD-YYYYMMDD-XXX
+ */
+async function generateOrderNumber(): Promise<string> {
+  const client = await getRedisClient();
+  const date = new Date();
+  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+  
+  let counter: number;
+  
+  if (!client) {
+    // In-memory fallback
+    const currentCounter = memoryStore.get(ORDER_COUNTER_KEY) as number || 0;
+    counter = currentCounter + 1;
+    memoryStore.set(ORDER_COUNTER_KEY, counter);
+  } else {
+    counter = await client.incr(ORDER_COUNTER_KEY);
+  }
+  
+  const paddedCounter = String(counter).padStart(3, '0');
+  return `ORD-${dateStr}-${paddedCounter}`;
+}
+
+/**
+ * Create a new order
+ */
+export async function createOrder(orderData: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>): Promise<Order> {
+  try {
+    const client = await getRedisClient();
+    const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const orderNumber = await generateOrderNumber();
+    const now = new Date().toISOString();
+    
+    const order: Order = {
+      id,
+      orderNumber,
+      createdAt: now,
+      updatedAt: now,
+      ...orderData,
+    };
+    
+    const key = `${ORDER_KEY_PREFIX}${id}`;
+    
+    if (!client) {
+      // In-memory fallback
+      memoryStore.set(key, order);
+      const index = memoryStore.get(ORDER_INDEX_KEY) as string[] || [];
+      index.push(id);
+      memoryStore.set(ORDER_INDEX_KEY, index);
+      console.log('[KV] Order created (in-memory):', orderNumber);
+      return order;
+    }
+    
+    await client.set(key, JSON.stringify(order));
+    await client.sAdd(ORDER_INDEX_KEY, id);
+    
+    console.log('[KV] Order created:', orderNumber);
+    return order;
+  } catch (error) {
+    console.error('[KV] Error creating order:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get order by ID
+ */
+export async function getOrder(orderId: string): Promise<Order | null> {
+  try {
+    const client = await getRedisClient();
+    const key = `${ORDER_KEY_PREFIX}${orderId}`;
+    
+    if (!client) {
+      // In-memory fallback
+      return memoryStore.get(key) as Order || null;
+    }
+    
+    const data = await client.get(key);
+    if (!data) return null;
+    
+    return JSON.parse(data as string) as Order;
+  } catch (error) {
+    console.error('[KV] Error getting order:', error);
+    return null;
+  }
+}
+
+/**
+ * Get all orders
+ */
+export async function getAllOrders(): Promise<Order[]> {
+  try {
+    const client = await getRedisClient();
+    
+    if (!client) {
+      // In-memory fallback
+      const index = memoryStore.get(ORDER_INDEX_KEY) as string[] || [];
+      return index.map(id => memoryStore.get(`${ORDER_KEY_PREFIX}${id}`) as Order).filter(Boolean);
+    }
+    
+    const orderIds = await client.sMembers(ORDER_INDEX_KEY) || [];
+    if (orderIds.length === 0) return [];
+    
+    const keys = orderIds.map(id => `${ORDER_KEY_PREFIX}${id}`);
+    const values = await client.mGet(keys);
+    
+    const orders: Order[] = [];
+    values.forEach((value) => {
+      if (value) {
+        try {
+          orders.push(JSON.parse(value as string) as Order);
+        } catch (e) {
+          console.error('[KV] Error parsing order:', e);
+        }
+      }
+    });
+    
+    // Sort by createdAt desc
+    return orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  } catch (error) {
+    console.error('[KV] Error getting all orders:', error);
+    return [];
+  }
+}
+
+/**
+ * Update order
+ */
+export async function updateOrder(orderId: string, updates: Partial<Order>): Promise<Order | null> {
+  try {
+    const client = await getRedisClient();
+    const key = `${ORDER_KEY_PREFIX}${orderId}`;
+    
+    const existingOrder = await getOrder(orderId);
+    if (!existingOrder) return null;
+    
+    const updatedOrder: Order = {
+      ...existingOrder,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    
+    if (!client) {
+      // In-memory fallback
+      memoryStore.set(key, updatedOrder);
+      console.log('[KV] Order updated (in-memory):', orderId);
+      return updatedOrder;
+    }
+    
+    await client.set(key, JSON.stringify(updatedOrder));
+    console.log('[KV] Order updated:', orderId);
+    return updatedOrder;
+  } catch (error) {
+    console.error('[KV] Error updating order:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete order
+ */
+export async function deleteOrder(orderId: string): Promise<boolean> {
+  try {
+    const client = await getRedisClient();
+    const key = `${ORDER_KEY_PREFIX}${orderId}`;
+    
+    if (!client) {
+      // In-memory fallback
+      memoryStore.delete(key);
+      const index = memoryStore.get(ORDER_INDEX_KEY) as string[] || [];
+      memoryStore.set(ORDER_INDEX_KEY, index.filter(id => id !== orderId));
+      console.log('[KV] Order deleted (in-memory):', orderId);
+      return true;
+    }
+    
+    await client.del(key);
+    await client.sRem(ORDER_INDEX_KEY, orderId);
+    console.log('[KV] Order deleted:', orderId);
+    return true;
+  } catch (error) {
+    console.error('[KV] Error deleting order:', error);
+    return false;
+  }
+}
+
+/**
+ * Get order statistics
+ */
+export async function getOrderStats(): Promise<{
+  total: number;
+  pending: number;
+  confirmed: number;
+  paid: number;
+  shipped: number;
+  delivered: number;
+  cancelled: number;
+  totalRevenue: number;
+}> {
+  try {
+    const orders = await getAllOrders();
+    
+    const stats = {
+      total: orders.length,
+      pending: 0,
+      confirmed: 0,
+      paid: 0,
+      shipped: 0,
+      delivered: 0,
+      cancelled: 0,
+      totalRevenue: 0,
+    };
+    
+    orders.forEach(order => {
+      stats[order.status]++;
+      if (order.status === 'paid' || order.status === 'shipped' || order.status === 'delivered') {
+        stats.totalRevenue += order.totalArs;
+      }
+    });
+    
+    return stats;
+  } catch (error) {
+    console.error('[KV] Error getting order stats:', error);
+    return {
+      total: 0,
+      pending: 0,
+      confirmed: 0,
+      paid: 0,
+      shipped: 0,
+      delivered: 0,
+      cancelled: 0,
+      totalRevenue: 0,
+    };
+  }
+}

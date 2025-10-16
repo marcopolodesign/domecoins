@@ -86,6 +86,7 @@ export default function ProductCard({
         card,
         priceUsd: usdPrice,
         priceArs: arsPrice!,
+        inStock: card.inStock ?? true, // Default to true if not specified
       }))
       
       // Auto-open the cart after adding item

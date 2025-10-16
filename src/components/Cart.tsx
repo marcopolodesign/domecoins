@@ -30,8 +30,9 @@ export default function Cart() {
   }
 
   const handleCheckout = () => {
-    // TODO: Implement MercadoPago checkout
-    console.log('Proceeding to checkout...')
+    // Close cart and navigate to checkout
+    dispatch(closeCart())
+    window.location.href = '/checkout'
   }
 
   return (
