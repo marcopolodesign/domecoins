@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import AdminOrders from '@/components/AdminOrders';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -417,6 +418,16 @@ export default function AdminPage() {
               <li>• Los productos sin stock no se mostrarán como disponibles.</li>
               <li>• El inventario se almacena en memoria y se reinicia con cada deployment.</li>
             </ul>
+          </div>
+        </div>
+
+        {/* Orders Management Section */}
+        <div className="mt-6 bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h3 className="text-lg leading-6 font-medium text-gray-900 font-thunder mb-6">
+              GESTIÓN DE ÓRDENES
+            </h3>
+            <AdminOrders />
           </div>
         </div>
       </div>
