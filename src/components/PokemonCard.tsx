@@ -179,9 +179,6 @@ export default function PokemonCard({
                 })}
               </span>
             </div>
-            <div className="text-xs text-gray-500">
-              US${usdPrice.toFixed(2)}
-            </div>
           </div>
         ) : (
           <div className="mb-3">

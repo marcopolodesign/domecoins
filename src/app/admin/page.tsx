@@ -412,7 +412,7 @@ export default function AdminPage() {
           <div className="px-4 py-5 sm:p-6">
             <h4 className="text-sm font-medium text-gray-900 mb-4">Información del Inventario</h4>
             <ul className="text-sm text-gray-600 space-y-2">
-              <li>• El archivo CSV debe contener la columna [TCGplayer Id] y [Add to Quantity].</li>
+              <li>• El archivo CSV debe contener la columna [TCGplayer Id] y   [Add to Quantity].</li>
               <li>• El inventario se actualiza completamente con cada carga.</li>
               <li>• Los productos sin stock no se mostrarán como disponibles.</li>
               <li>• El inventario se almacena en memoria y se reinicia con cada deployment.</li>

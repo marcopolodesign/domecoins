@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, Suspense } from 'react'
+import { useEffect, useState, useCallback, useMemo, Suspense } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useSearchParams } from 'next/navigation'
 import { FunnelIcon, Squares2X2Icon, Bars3Icon } from '@heroicons/react/24/outline'
@@ -82,6 +82,22 @@ function CardsPageContent() {
     if (filters.rarity) count++
     return count
   }
+
+  // Sort cards to show "EN STOCK" (inStock: true) first
+  const sortedCards = useMemo(() => {
+    if (!cards || cards.length === 0) return cards
+    
+    console.log('[CardsPage] Sorting cards - In stock first')
+    
+    return [...cards].sort((a, b) => {
+      // First priority: in-stock cards
+      if (a.inStock && !b.inStock) return -1
+      if (!a.inStock && b.inStock) return 1
+      
+      // If both have same stock status, maintain original order
+      return 0
+    })
+  }, [cards])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -286,7 +302,7 @@ function CardsPageContent() {
                   Reintentar
                 </button>
               </div>
-            ) : cards.length === 0 ? (
+            ) : sortedCards.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-500 mb-4">No se encontraron cartas con estos filtros</p>
                 <button onClick={clearFilters} className="btn btn-primary">
@@ -296,7 +312,7 @@ function CardsPageContent() {
             ) : (
               <>
                 <div className={viewMode === 'grid' ? 'grid-cards' : 'space-y-4'}>
-                  {cards.map((card) => (
+                  {sortedCards.map((card) => (
                     <ProductCard 
                       key={card.id} 
                       card={card}

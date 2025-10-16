@@ -224,24 +224,12 @@ export default function ProductCard({
                   })}
                 </span>
               </div>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">
-                US${usdPrice.toFixed(2)}
-              </span>
               {card.pricing?.source === 'TCGPlayer' && (
-                <span className="text-green-600 font-medium">
-                  ✓ Precio actualizado
+                <span className="text-xs text-green-600 font-medium">
+                  ✓ Actualizado
                 </span>
               )}
             </div>
-            
-            {/* Show price range if available */}
-            {card.pricing && (card.pricing.lowPrice || card.pricing.highPrice) && (
-              <div className="mt-2 text-xs text-gray-500">
-                Rango: ${card.pricing.lowPrice?.toFixed(2)} - ${card.pricing.highPrice?.toFixed(2)}
-              </div>
-            )}
           </div>
         ) : (
           <div className="mb-4">

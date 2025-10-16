@@ -124,9 +124,6 @@ export default function Cart() {
                                           </Link>
                                         </h3>
                                         <div className="ml-4 text-right">
-                                          <p className="text-sm text-gray-500">
-                                            US${item.priceUsd.toFixed(2)}
-                                          </p>
                                           <p className="font-medium">
                                             AR${item.priceArs.toLocaleString('es-AR')}
                                           </p>
@@ -188,9 +185,6 @@ export default function Cart() {
                           <div className="flex justify-between text-base font-medium text-gray-900">
                             <p>Subtotal</p>
                             <div className="text-right">
-                              <p className="text-sm text-gray-500">
-                                US${total.usd.toFixed(2)}
-                              </p>
                               <p>AR${total.ars.toLocaleString('es-AR')}</p>
                             </div>
                           </div>

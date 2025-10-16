@@ -167,8 +167,8 @@ export default function Header() {
       <Disclosure as="nav" ref={headerRef} className={`
         transition-all duration-300 ease-out rounded-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8
         ${(isHomePage && !isScrolled) 
-          ? 'bg-transparent ' 
-          : 'translate-y-20 bg-gray-300'
+          ? 'bg-transparent' 
+          : 'translate-y-20 bg-white/70 backdrop-blur-md border-b border-gray-200'
         }
       `}>
         {({ open }) => (
