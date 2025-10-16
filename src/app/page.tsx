@@ -328,7 +328,7 @@ export default function HomePage() {
        <ReusableCardsBlock 
         title="Cartas en stock"
         subtitle="Disponibles para entrega inmediata"
-        cardIds={[250309, 250314, 250300, 250317, 250303, 250305]}
+        cardIds={[478058, 250314, 250300, 250317, 250303, 250305]}
         showRefreshButton={false}
         showFloatingButton={true}
         floatingButtonText="Ver Todas las Cartas"

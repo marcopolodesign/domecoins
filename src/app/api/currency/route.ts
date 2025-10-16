@@ -1,4 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
+import fs from 'fs'
+import path from 'path'
+
+const CUSTOM_PRICE_FILE = path.join(process.cwd(), 'data', 'custom-dolar-price.json');
+
+// Check for custom price first
+async function getCustomPrice(): Promise<number | null> {
+  try {
+    if (fs.existsSync(CUSTOM_PRICE_FILE)) {
+      const data = JSON.parse(fs.readFileSync(CUSTOM_PRICE_FILE, 'utf-8'));
+      if (data.customPrice && data.updatedAt) {
+        // Check if custom price is still valid (less than 7 days old)
+        const daysSinceUpdate = (Date.now() - new Date(data.updatedAt).getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSinceUpdate < 7) {
+          console.log(`Using custom dolar price: $${data.customPrice}`);
+          return data.customPrice;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error reading custom price:', error);
+  }
+  return null;
+}
 
 // Multiple sources for dolar blue rate
 const CURRENCY_SOURCES = [
@@ -43,6 +67,17 @@ async function fetchFromSource(source: typeof CURRENCY_SOURCES[0]): Promise<numb
 
 export async function GET(request: NextRequest) {
   try {
+    // First, check for custom price
+    const customPrice = await getCustomPrice();
+    if (customPrice !== null) {
+      return NextResponse.json({
+        blueRate: customPrice,
+        source: 'Custom',
+        isCustom: true,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     // Try each source until we get a valid rate
     for (const source of CURRENCY_SOURCES) {
       const rate = await fetchFromSource(source)

@@ -23,8 +23,9 @@ if (typeof window !== 'undefined') {
 }
 
 const navigation = [
-  { name: 'Sets', href: '/sets' },
-  { name: 'Rarezas', href: '/rarezas' },
+  { name: 'Cartas', href: '/sets' },
+  { name: 'Accesorios', href: '/rarezas' },
+  { name: 'Sellados', href: '/rarezas' },
   { name: 'En stock', href: '/stock' },
 ]
 
