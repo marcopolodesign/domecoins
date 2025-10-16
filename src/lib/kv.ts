@@ -1,20 +1,30 @@
 import { Redis } from '@upstash/redis';
 
 // Initialize Upstash Redis client
-// Environment variables are automatically set when you connect Upstash via Vercel Marketplace
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || '',
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
-});
+// Supports both REST API format and standard Redis URL
+let redis: Redis;
+let isRedisConfigured = false;
 
-// Check if Redis is configured
-const isRedisConfigured = Boolean(
-  process.env.UPSTASH_REDIS_REST_URL && 
-  process.env.UPSTASH_REDIS_REST_TOKEN
-);
-
-if (!isRedisConfigured) {
-  console.warn('[KV] Upstash Redis not configured. Using in-memory fallback for local development.');
+if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  // REST API format (recommended)
+  redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  });
+  isRedisConfigured = true;
+  console.log('[KV] Using Upstash Redis REST API');
+} else if (process.env.REDIS_URL) {
+  // Standard Redis URL format (redis://...)
+  redis = Redis.fromEnv();
+  isRedisConfigured = true;
+  console.log('[KV] Using Redis from REDIS_URL');
+} else {
+  // Fallback for local development
+  redis = new Redis({
+    url: '',
+    token: '',
+  });
+  console.warn('[KV] Redis not configured. Using in-memory fallback for local development.');
 }
 
 // In-memory fallback for local development
