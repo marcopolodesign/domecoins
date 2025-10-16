@@ -55,6 +55,17 @@ export default function ProductCard({
 
   const usdPrice = getPrice()
   const arsPrice = usdPrice ? usdPrice * dolarBlueRate : null
+  
+  // Log pricing for debugging
+  if (usdPrice) {
+    console.log(`[ProductCard] ${card.name}:`, {
+      usdPrice,
+      dolarBlueRate,
+      arsPrice,
+      stock: card.stock,
+      inStock: card.inStock
+    });
+  }
 
   const handleAddToCart = async () => {
     if (!usdPrice) {

@@ -19,11 +19,34 @@ class CurrencyAPI {
 
   async getDolarBlueRate(): Promise<number> {
     if (this.isValidCacheEntry()) {
+      console.log('[CurrencyAPI] Using cached rate:', this.cache!.dolarBlue);
       return this.cache!.dolarBlue;
     }
 
     try {
-      // Try multiple sources for dolar blue rate
+      // First, try to get custom price or API rate from our backend
+      console.log('[CurrencyAPI] Fetching rate from /api/currency...');
+      const response = await axios.get('/api/currency');
+      
+      if (response.data) {
+        const rate = response.data.blueRate || response.data.rate || response.data.dolarBlue;
+        
+        if (rate) {
+          console.log('[CurrencyAPI] Got rate from backend:', rate, 'Source:', response.data.source || 'Unknown');
+          
+          this.cache = {
+            usdToArs: rate,
+            dolarBlue: rate,
+            lastUpdated: new Date()
+          };
+          this.cacheExpiry = new Date(Date.now() + this.CACHE_DURATION);
+          
+          return rate;
+        }
+      }
+      
+      // Fallback to multiple sources
+      console.log('[CurrencyAPI] Backend failed, trying external sources...');
       const rate = await this.fetchFromMultipleSources();
       
       this.cache = {
@@ -33,16 +56,19 @@ class CurrencyAPI {
       };
       this.cacheExpiry = new Date(Date.now() + this.CACHE_DURATION);
       
+      console.log('[CurrencyAPI] Got rate from external sources:', rate);
       return rate;
     } catch (error) {
-      console.error('Error fetching dolar blue rate:', error);
+      console.error('[CurrencyAPI] Error fetching dolar blue rate:', error);
       
       // Return cached value if available, otherwise fallback
       if (this.cache) {
+        console.log('[CurrencyAPI] Using stale cache:', this.cache.dolarBlue);
         return this.cache.dolarBlue;
       }
       
       // Fallback rate if all else fails
+      console.log('[CurrencyAPI] Using fallback rate: 1335');
       return 1335; // Default rate as mentioned in requirements
     }
   }
