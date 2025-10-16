@@ -1,25 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import fs from 'fs'
-import path from 'path'
 
-const CUSTOM_PRICE_FILE = path.join(process.cwd(), 'data', 'custom-dolar-price.json');
-
-// Check for custom price first
+// Check for custom price from the custom endpoint
 async function getCustomPrice(): Promise<number | null> {
   try {
-    if (fs.existsSync(CUSTOM_PRICE_FILE)) {
-      const data = JSON.parse(fs.readFileSync(CUSTOM_PRICE_FILE, 'utf-8'));
-      if (data.customPrice && data.updatedAt) {
-        // Check if custom price is still valid (less than 7 days old)
-        const daysSinceUpdate = (Date.now() - new Date(data.updatedAt).getTime()) / (1000 * 60 * 60 * 24);
-        if (daysSinceUpdate < 7) {
-          console.log(`Using custom dolar price: $${data.customPrice}`);
-          return data.customPrice;
-        }
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/currency/custom`, {
+      next: { revalidate: 0 } // Don't cache
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.customPrice) {
+        console.log(`Using custom dolar price: $${data.customPrice}`);
+        return data.customPrice;
       }
     }
   } catch (error) {
-    console.error('Error reading custom price:', error);
+    console.error('Error fetching custom price:', error);
   }
   return null;
 }

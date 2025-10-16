@@ -1,35 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
 
-const CUSTOM_PRICE_FILE = path.join(process.cwd(), 'data', 'custom-dolar-price.json');
-
-// Ensure data directory exists
-function ensureDataDir() {
-  const dataDir = path.join(process.cwd(), 'data');
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-}
+// In-memory storage (will reset on deployment, but that's acceptable for this use case)
+// For production, you should use Vercel KV or a database
+let customPriceCache: {
+  customPrice: number | null;
+  updatedAt: string | null;
+} = {
+  customPrice: null,
+  updatedAt: null,
+};
 
 // Get custom price or fallback to API
 export async function GET(request: NextRequest) {
   try {
-    ensureDataDir();
-    
-    // Check if custom price exists
-    if (fs.existsSync(CUSTOM_PRICE_FILE)) {
-      const data = JSON.parse(fs.readFileSync(CUSTOM_PRICE_FILE, 'utf-8'));
-      if (data.customPrice && data.updatedAt) {
-        // Check if custom price is still valid (less than 7 days old)
-        const daysSinceUpdate = (Date.now() - new Date(data.updatedAt).getTime()) / (1000 * 60 * 60 * 24);
-        if (daysSinceUpdate < 7) {
-          return NextResponse.json({
-            customPrice: data.customPrice,
-            updatedAt: data.updatedAt,
-            isCustom: true,
-          });
-        }
+    // Check if custom price exists and is still valid
+    if (customPriceCache.customPrice && customPriceCache.updatedAt) {
+      const daysSinceUpdate = (Date.now() - new Date(customPriceCache.updatedAt).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceUpdate < 7) {
+        return NextResponse.json({
+          customPrice: customPriceCache.customPrice,
+          updatedAt: customPriceCache.updatedAt,
+          isCustom: true,
+        });
       }
     }
 
@@ -76,20 +68,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    ensureDataDir();
-
-    // Save custom price
-    const data = {
+    // Store in memory
+    customPriceCache = {
       customPrice: price,
       updatedAt: new Date().toISOString(),
     };
 
-    fs.writeFileSync(CUSTOM_PRICE_FILE, JSON.stringify(data, null, 2));
-
     return NextResponse.json({
       success: true,
       customPrice: price,
-      updatedAt: data.updatedAt,
+      updatedAt: customPriceCache.updatedAt,
+      note: 'Price stored in memory. Will reset on redeployment. For persistent storage, upgrade to Vercel KV.',
     });
 
   } catch (error: any) {
@@ -104,9 +93,10 @@ export async function POST(request: NextRequest) {
 // Delete custom price (revert to API)
 export async function DELETE(request: NextRequest) {
   try {
-    if (fs.existsSync(CUSTOM_PRICE_FILE)) {
-      fs.unlinkSync(CUSTOM_PRICE_FILE);
-    }
+    customPriceCache = {
+      customPrice: null,
+      updatedAt: null,
+    };
 
     return NextResponse.json({
       success: true,
