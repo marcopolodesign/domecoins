@@ -27,9 +27,28 @@ export async function GET(request: NextRequest) {
 
     console.log(`[SearchWithPrices] Got ${tcgResults.length} results from TCGPlayer`);
 
+    // Get inventory for all product IDs
+    const productIds = tcgResults.map(r => r.productId.toString()).join(',');
+    let inventoryMap: Record<string, number> = {};
+    
+    try {
+      const inventoryResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/inventory?ids=${productIds}`, {
+        next: { revalidate: 0 }
+      });
+      
+      if (inventoryResponse.ok) {
+        const inventoryData = await inventoryResponse.json();
+        inventoryMap = inventoryData.inventory || {};
+      }
+    } catch (error) {
+      console.error('[SearchWithPrices] Error fetching inventory:', error);
+    }
+
     // Convert TCGPlayer results to our card format
     const enrichedCards = tcgResults.map((priceData, index) => {
       const cardNumber = priceData.productId?.toString() || `${index + 1}`;
+      const stock = inventoryMap[priceData.productId.toString()] || 0;
+      const inStock = stock > 0;
       
       return {
         id: `tcg-${priceData.productId}`,
@@ -50,6 +69,9 @@ export async function GET(request: NextRequest) {
         attacks: [],
         hp: null,
         nationalPokedexNumbers: [],
+        // Stock information
+        stock,
+        inStock,
         // Enhanced pricing data
         pricing: {
           marketPrice: priceData.marketPrice,

@@ -13,6 +13,13 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
+  // Inventory management
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [inventoryError, setInventoryError] = useState('');
+  const [inventorySuccess, setInventorySuccess] = useState('');
+  const [inventoryStats, setInventoryStats] = useState<{totalCards: number} | null>(null);
 
   // Check if already authenticated
   useEffect(() => {
@@ -20,6 +27,7 @@ export default function AdminPage() {
     if (authToken === 'dome_authenticated') {
       setIsAuthenticated(true);
       fetchCurrentPrice();
+      fetchInventoryStats();
     }
   }, []);
 
@@ -83,6 +91,91 @@ export default function AdminPage() {
       setError('Error al conectar con el servidor');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchInventoryStats = async () => {
+    try {
+      const response = await fetch('/api/inventory');
+      if (response.ok) {
+        const data = await response.json();
+        setInventoryStats({ totalCards: data.totalCards });
+      }
+    } catch (err) {
+      console.error('Error fetching inventory stats:', err);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setCsvFile(e.target.files[0]);
+      setInventoryError('');
+      setInventorySuccess('');
+    }
+  };
+
+  const handleInventoryUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!csvFile) {
+      setInventoryError('Por favor selecciona un archivo CSV');
+      return;
+    }
+
+    setInventoryLoading(true);
+    setInventoryError('');
+    setInventorySuccess('');
+
+    try {
+      // Read CSV file
+      const reader = new FileReader();
+      
+      reader.onload = async (event) => {
+        try {
+          const csvData = event.target?.result as string;
+          
+          const response = await fetch('/api/inventory', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ csvData }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setInventorySuccess(
+              `✅ Inventario actualizado: ${data.processedCount} productos cargados${
+                data.errorCount > 0 ? ` (${data.errorCount} errores)` : ''
+              }`
+            );
+            setCsvFile(null);
+            // Reset file input
+            const fileInput = document.getElementById('csv-file') as HTMLInputElement;
+            if (fileInput) fileInput.value = '';
+            
+            // Refresh stats
+            fetchInventoryStats();
+          } else {
+            const data = await response.json();
+            setInventoryError(data.error || 'Error al cargar el inventario');
+          }
+        } catch (err) {
+          setInventoryError('Error al procesar el archivo CSV');
+        } finally {
+          setInventoryLoading(false);
+        }
+      };
+
+      reader.onerror = () => {
+        setInventoryError('Error al leer el archivo');
+        setInventoryLoading(false);
+      };
+
+      reader.readAsText(csvFile);
+    } catch (err) {
+      setInventoryError('Error al cargar el archivo');
+      setInventoryLoading(false);
     }
   };
 
@@ -160,7 +253,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 mt-20 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
         <div className="bg-white shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
@@ -245,6 +338,84 @@ export default function AdminPage() {
               <li>• El precio personalizado tendrá prioridad sobre las APIs automáticas.</li>
               <li>• Puedes actualizar el precio cuantas veces necesites.</li>
               <li>• Los cambios se aplicarán inmediatamente en todo el sitio.</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Inventory Management Section */}
+        <div className="mt-6 bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h3 className="text-lg leading-6 font-medium text-gray-900 font-thunder mb-6">
+              Gestión de Inventario
+            </h3>
+
+            {inventoryStats && (
+              <div className="mb-6 p-4 bg-green-50 rounded-md">
+                <p className="text-sm text-green-900">
+                  <span className="font-semibold">Productos en inventario:</span> {inventoryStats.totalCards}
+                </p>
+              </div>
+            )}
+
+            <form onSubmit={handleInventoryUpload} className="space-y-4">
+              <div>
+                <label htmlFor="csv-file" className="block text-sm font-medium text-gray-700 mb-2">
+                  Cargar Archivo CSV de Inventario
+                </label>
+                <input
+                  type="file"
+                  id="csv-file"
+                  accept=".csv"
+                  onChange={handleFileChange}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  required
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                  Formato esperado: CSV con columnas TCGplayer Id, Product Name, Add to Quantity
+                </p>
+              </div>
+
+              {csvFile && (
+                <div className="p-3 bg-blue-50 rounded-md">
+                  <p className="text-sm text-blue-900">
+                    📄 Archivo seleccionado: <span className="font-semibold">{csvFile.name}</span>
+                  </p>
+                </div>
+              )}
+
+              {inventoryError && (
+                <div className="rounded-md bg-red-50 p-4">
+                  <p className="text-sm text-red-800">{inventoryError}</p>
+                </div>
+              )}
+
+              {inventorySuccess && (
+                <div className="rounded-md bg-green-50 p-4">
+                  <p className="text-sm text-green-800">{inventorySuccess}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={inventoryLoading || !csvFile}
+                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {inventoryLoading ? 'Cargando...' : 'Subir Inventario'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div className="mt-6 bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h4 className="text-sm font-medium text-gray-900 mb-4">Información del Inventario</h4>
+            <ul className="text-sm text-gray-600 space-y-2">
+              <li>• El archivo CSV debe contener la columna "TCGplayer Id" y "Add to Quantity".</li>
+              <li>• El inventario se actualiza completamente con cada carga.</li>
+              <li>• Los productos sin stock no se mostrarán como disponibles.</li>
+              <li>• El inventario se almacena en memoria y se reinicia con cada deployment.</li>
             </ul>
           </div>
         </div>
