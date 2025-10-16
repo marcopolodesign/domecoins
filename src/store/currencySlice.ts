@@ -3,7 +3,7 @@ import { currencyAPI } from '../lib/currency-api';
 
 interface CurrencyState {
   dolarBlueRate: number;
-  lastUpdated: Date | null;
+  lastUpdated: string | null;
   loading: boolean;
   error: string | null;
 }
@@ -22,7 +22,7 @@ export const fetchExchangeRate = createAsyncThunk(
     const rate = await currencyAPI.getDolarBlueRate();
     return {
       rate,
-      lastUpdated: new Date(),
+      lastUpdated: new Date().toISOString(),
     };
   }
 );
@@ -33,7 +33,7 @@ const currencySlice = createSlice({
   reducers: {
     setRate: (state, action: PayloadAction<number>) => {
       state.dolarBlueRate = action.payload;
-      state.lastUpdated = new Date();
+      state.lastUpdated = new Date().toISOString();
     },
     
     clearError: (state) => {

@@ -3,7 +3,7 @@ import axios from 'axios';
 export interface ExchangeRates {
   usdToArs: number;
   dolarBlue: number;
-  lastUpdated: Date;
+  lastUpdated: string;
 }
 
 class CurrencyAPI {
@@ -37,7 +37,7 @@ class CurrencyAPI {
           this.cache = {
             usdToArs: rate,
             dolarBlue: rate,
-            lastUpdated: new Date()
+            lastUpdated: new Date().toISOString()
           };
           this.cacheExpiry = new Date(Date.now() + this.CACHE_DURATION);
           
@@ -52,7 +52,7 @@ class CurrencyAPI {
       this.cache = {
         usdToArs: rate,
         dolarBlue: rate,
-        lastUpdated: new Date()
+        lastUpdated: new Date().toISOString()
       };
       this.cacheExpiry = new Date(Date.now() + this.CACHE_DURATION);
       
@@ -176,7 +176,7 @@ class CurrencyAPI {
     this.cache = {
       usdToArs: rate,
       dolarBlue: rate,
-      lastUpdated: new Date()
+      lastUpdated: new Date().toISOString()
     };
     this.cacheExpiry = new Date(Date.now() + this.CACHE_DURATION);
   }
@@ -185,7 +185,7 @@ class CurrencyAPI {
     return this.cache?.dolarBlue || null;
   }
 
-  getLastUpdated(): Date | null {
+  getLastUpdated(): string | null {
     return this.cache?.lastUpdated || null;
   }
 }
