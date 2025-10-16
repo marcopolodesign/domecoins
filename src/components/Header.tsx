@@ -72,6 +72,10 @@ export default function Header() {
       const header = headerRef.current
       const notices = noticesRef.current
       
+      // Set initial position immediately to prevent flash
+      gsap.set(header, { y: 0 })
+      gsap.set(notices, { y: 0 })
+      
       // Create scroll trigger for header animations
       ScrollTrigger.create({
         trigger: document.body,
@@ -93,7 +97,7 @@ export default function Header() {
             
             // Move header up slightly
             gsap.to(header, {
-              y: -35,
+              y: -45,
               duration: 0.3,
               ease: "power2.out"
             })
@@ -165,10 +169,10 @@ export default function Header() {
 
       {/* Header Navigation */}
       <Disclosure as="nav" ref={headerRef} className={`
-        transition-all duration-300 ease-out rounded-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8
+        transition-all duration-300 ease-out rounded-br-2xl rounded-bl-2xl max-w-7xl mx-auto px-4 sm:px-6 lg:px-8
         ${(isHomePage && !isScrolled) 
           ? 'bg-transparent' 
-          : 'translate-y-20 bg-white/70 backdrop-blur-md border-b border-gray-200'
+          : 'bg-white/70 backdrop-blur-md border-b border-gray-200'
         }
       `}>
         {({ open }) => (

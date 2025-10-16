@@ -19,14 +19,18 @@ export async function GET(request: NextRequest) {
     const searchQuery = query || 'pokemon';
 
     console.log(`[SearchWithPrices] Query: ${searchQuery}, pageSize: ${pageSize}, page: ${page}`);
+    console.log(`[SearchWithPrices] Calculated offset: from=${(page - 1) * pageSize}, limit=${pageSize}`);
 
-    // Fetch from TCGPlayer directly
-    const tcgResults = await searchTCGPlayerPrices(searchQuery, {
-      pageSize,
-      page,
+    // Fetch from TCGPlayer directly with proper pagination
+    const tcgResponse = await searchTCGPlayerPrices(searchQuery, {
+      pageSize: pageSize,
+      page: page,
     });
 
-    console.log(`[SearchWithPrices] Got ${tcgResults.length} results from TCGPlayer`);
+    const tcgResults = tcgResponse.cards;
+    const totalAvailable = tcgResponse.totalResults;
+
+    console.log(`[SearchWithPrices] Got ${tcgResults.length} results from TCGPlayer (${totalAvailable} total available)`);
 
     // Get inventory for all product IDs
     const productIds = tcgResults.map(r => r.productId.toString());
@@ -42,7 +46,6 @@ export async function GET(request: NextRequest) {
 
     // Convert TCGPlayer results to our card format
     const enrichedCards = tcgResults.map((priceData, index) => {
-      const cardNumber = priceData.productId?.toString() || `${index + 1}`;
       const stock = inventoryMap[priceData.productId.toString()] || 0;
       const inStock = stock > 0;
       
@@ -91,20 +94,25 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       items: enrichedCards,
-      total: enrichedCards.length,
+      total: totalAvailable, // Total cards available across all pages
       page,
       pageSize,
-      count: enrichedCards.length,
-      totalCount: enrichedCards.length,
+      count: enrichedCards.length, // Cards returned in this response
+      totalCount: totalAvailable, // Total cards available for pagination
       providers: ['tcgplayer'],
       games: [{ id: "pokemon", name: "Pokémon" }],
       pricesIncluded: true,
+      // Pagination metadata
+      hasNextPage: (page * pageSize) < totalAvailable,
+      hasPrevPage: page > 1,
+      totalPages: Math.ceil(totalAvailable / pageSize),
     });
     
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error in search-with-prices API:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch search results', details: error.message },
+      { error: 'Failed to fetch search results', details: errorMessage },
       { status: 500 }
     );
   }

@@ -53,6 +53,7 @@ export interface TCGPlayerPrice {
 export interface TCGPlayerSearchResult {
   cards: TCGPlayerPrice[];
   totalResults: number;
+  totalAvailable?: number; // Total cards available for this search
   aggregations?: any;
 }
 
@@ -61,23 +62,94 @@ export interface TCGPlayerSearchResult {
  * Discovered via browser network inspection
  * 
  * WORKING IMPLEMENTATION - Tested and verified!
+ * 
+ * IMPORTANT LIMITS (tested 2024):
+ * - Maximum pageSize: 50 cards per request
+ * - Requests with pageSize > 50 return 400 Bad Request
+ * - Average response time: ~1000ms for 20-50 cards
+ * 
+ * @param query - Search query string
+ * @param options - Pagination options
+ * @param options.pageSize - Number of results per page (default: 24, max: 50)
+ * @param options.page - Page number (1-indexed)
+ * @param options.limit - Alternative to pageSize (for backwards compatibility)
+ * @param options.from - Alternative to page (0-indexed offset)
  */
+/**
+ * Parse search query to extract rarity filters
+ * TCGPlayer's API doesn't handle rarity keywords in the query well,
+ * so we extract them and filter results client-side
+ */
+function parseQueryForRarity(query: string): { cleanQuery: string; rarityFilter: string | null } {
+  // Sort keywords by length (longest first) to match multi-word rarities first
+  const rarityKeywords = [
+    'ultra rare', 'secret rare', 'rainbow rare', 'reverse holo',
+    'full art', 'alternate art', 'alt art',
+    'holo', 'holofoil', 'holographic',
+    'reverse', 
+    'promo', 'promotional',
+    'rare',
+    'common', 'uncommon'
+  ];
+  
+  let cleanQuery = query.toLowerCase();
+  let rarityFilter: string | null = null;
+  
+  // Check for rarity keywords (longest first to avoid partial matches)
+  for (const keyword of rarityKeywords) {
+    if (cleanQuery.includes(keyword)) {
+      rarityFilter = keyword;
+      // Remove the keyword from the query
+      cleanQuery = cleanQuery.replace(keyword, '').trim();
+      // Remove extra spaces
+      cleanQuery = cleanQuery.replace(/\s+/g, ' ').trim();
+      break;
+    }
+  }
+  
+  return { cleanQuery: cleanQuery || query, rarityFilter };
+}
+
 export async function searchTCGPlayerPrices(
   query: string,
   options: {
+    pageSize?: number;
+    page?: number;
     limit?: number;
     from?: number;
   } = {}
-): Promise<TCGPlayerPrice[]> {
+): Promise<{ cards: TCGPlayerPrice[]; totalResults: number }> {
   try {
-    const { limit = 24, from = 0 } = options;
+    // Parse query for rarity filters first
+    const { cleanQuery, rarityFilter } = parseQueryForRarity(query);
+    const searchQuery = cleanQuery;
+    
+    if (rarityFilter) {
+      console.log(`[TCGPlayer] Extracted rarity filter "${rarityFilter}" from query "${query}"`);
+      console.log(`[TCGPlayer] Clean search query: "${searchQuery}"`);
+    }
+    
+    // Support both pageSize/page and limit/from for flexibility
+    // Enforce TCGPlayer's maximum limit of 50 cards per request
+    const requestedPageSize = options.pageSize || options.limit || 24;
+    
+    // If we have a rarity filter, fetch more results (max 50) to have enough to filter
+    const fetchSize = rarityFilter ? 50 : Math.min(requestedPageSize, 50);
+    const pageSize = fetchSize;
+    const page = options.page || 1;
+    const from = options.from !== undefined ? options.from : (page - 1) * pageSize;
+    const limit = pageSize;
+    
+    if (requestedPageSize > 50) {
+      console.warn(`[TCGPlayer] Requested pageSize ${requestedPageSize} exceeds limit. Using maximum of 50.`);
+    }
     
     // TCGPlayer's actual internal API endpoint
     const url = 'https://mp-search-api.tcgplayer.com/v1/search/request';
     
-    // Query parameters
+    // Query parameters (use cleaned query without rarity keywords)
     const params = {
-      q: query,
+      q: searchQuery,
       isList: 'false',
       mpfev: '4345',
     };
@@ -103,7 +175,7 @@ export async function searchTCGPlayerPrices(
       sort: {}
     };
     
-    console.log(`[TCGPlayer] Searching for: "${query}"`);
+    console.log(`[TCGPlayer] Searching for: "${searchQuery}"${rarityFilter ? ` (with rarity filter: ${rarityFilter})` : ''}`);
     
     const response = await axios.post(url, payload, {
       params,
@@ -126,14 +198,15 @@ export async function searchTCGPlayerPrices(
     
     if (!data.results || data.results.length === 0) {
       console.log('[TCGPlayer] No results in response');
-      return [];
+      return { cards: [], totalResults: 0 };
     }
     
     // Extract cards from the first result set
     const firstResult = data.results[0];
     const products = firstResult.results || [];
+    const totalResults = firstResult.totalResults || 0;
     
-    console.log(`[TCGPlayer] Found ${products.length}/${firstResult.totalResults} products`);
+    console.log(`[TCGPlayer] Found ${products.length}/${totalResults} products (page ${page}, size ${pageSize})`);
     
     // Log full structure of first product for debugging
     if (products.length > 0) {
@@ -191,9 +264,70 @@ export async function searchTCGPlayerPrices(
       };
     });
     
-    console.log(`[TCGPlayer] Successfully extracted ${cards.length} cards with prices`);
+    // Apply rarity filter if one was extracted from the query
+    let filteredCards = cards;
+    let filteredTotal = totalResults;
     
-    return cards;
+    if (rarityFilter) {
+      filteredCards = cards.filter(card => {
+        if (!card.rarity) return false;
+        
+        const cardRarity = card.rarity.toLowerCase();
+        
+        // Match rarity keywords
+        if (rarityFilter === 'holo' || rarityFilter === 'holofoil' || rarityFilter === 'holographic') {
+          return cardRarity.includes('holo');
+        }
+        if (rarityFilter === 'reverse' || rarityFilter === 'reverse holo') {
+          return cardRarity.includes('reverse');
+        }
+        if (rarityFilter === 'ultra rare') {
+          return cardRarity.includes('ultra rare') || cardRarity.includes('ultra-rare') || cardRarity === 'ultra rare';
+        }
+        if (rarityFilter === 'secret rare') {
+          return cardRarity.includes('secret rare') || cardRarity.includes('secret-rare');
+        }
+        if (rarityFilter === 'rainbow rare') {
+          return cardRarity.includes('rainbow rare') || cardRarity.includes('rainbow-rare');
+        }
+        if (rarityFilter === 'full art' || rarityFilter === 'alt art' || rarityFilter === 'alternate art') {
+          return cardRarity.includes('full art') || cardRarity.includes('alternate art');
+        }
+        if (rarityFilter === 'promo' || rarityFilter === 'promotional') {
+          return cardRarity.includes('promo');
+        }
+        if (rarityFilter === 'rare') {
+          return cardRarity.includes('rare');
+        }
+        if (rarityFilter === 'common') {
+          return cardRarity === 'common';
+        }
+        if (rarityFilter === 'uncommon') {
+          return cardRarity === 'uncommon';
+        }
+        
+        return false;
+      });
+      
+      // Estimate total filtered results (since we only fetched one page)
+      // This is an approximation based on the filter rate
+      const filterRate = filteredCards.length / cards.length;
+      filteredTotal = Math.ceil(totalResults * filterRate);
+      
+      console.log(`[TCGPlayer] Filtered from ${cards.length} to ${filteredCards.length} cards based on rarity: ${rarityFilter}`);
+      console.log(`[TCGPlayer] Estimated total filtered results: ${filteredTotal} (${(filterRate * 100).toFixed(1)}% match rate)`);
+      
+      // Trim to requested page size if we fetched more for filtering
+      filteredCards = filteredCards.slice(0, requestedPageSize);
+    }
+    
+    console.log(`[TCGPlayer] Successfully extracted ${filteredCards.length} cards with prices`);
+    console.log(`[TCGPlayer] Total available results: ${filteredTotal}`);
+    
+    return {
+      cards: filteredCards,
+      totalResults: filteredTotal
+    };
     
   } catch (error: any) {
     console.error('[TCGPlayer] API error:', error.message);
@@ -214,8 +348,8 @@ export async function searchMultipleTCGPlayerPrices(queries: string[]): Promise<
   
   for (const query of queries) {
     try {
-      const prices = await searchTCGPlayerPrices(query);
-      results.set(query, prices);
+      const response = await searchTCGPlayerPrices(query);
+      results.set(query, response.cards);
       
       // Delay between requests to avoid rate limiting (2-3 seconds)
       await new Promise(resolve => setTimeout(resolve, 2500));

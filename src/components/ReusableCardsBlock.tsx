@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import FeaturedCard from './FeaturedCard';
+import ProductCard from './ProductCard';
 
 // Interface for TCGPlayer card data
 interface TCGPlayerCard {
@@ -194,11 +194,11 @@ export default function ReusableCardsBlock({
         )}
         
         {/* Cards display - Horizontal layout with image on left and info on right */}
-        <div className="flex flex-col md:flex-row gap-4 flex-wrap">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-center">
           {loading ? (
             // Loading skeleton
             [...Array(randomCount)].map((_, index) => (
-              <div key={index} className="w-full md:w-[30%] bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 animate-pulse h-auto lg:h-[280px]">
+              <div key={index} className="w-full max-w-sm bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 animate-pulse h-auto lg:h-[280px]">
                 <div className="flex flex-col lg:flex-row w-full h-full">
                   {/* Card Image Skeleton */}
                   <div className="w-full lg:w-1/2 aspect-[5/7] lg:aspect-auto lg:h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center flex-shrink-0">
@@ -217,15 +217,36 @@ export default function ReusableCardsBlock({
             ))
           ) : (
             featuredCards.map((card) => (
-              <FeaturedCard
+              <ProductCard
                 key={card.productId}
-                productId={card.productId}
-                productName={card.productName}
-                marketPrice={card.marketPrice}
-                lowestPrice={card.lowestPrice}
-                setName={card.setName}
-                rarityName={card.rarityName}
-                customAttributes={card.customAttributes}
+                card={{
+                  id: `tcg-${card.productId}`,
+                  name: card.productName,
+                  imageUrl: `https://product-images.tcgplayer.com/fit-in/437x437/${card.productId}.jpg`,
+                  categoryName: card.setName,
+                  rarity: card.rarityName,
+                  setId: card.productId.toString(),
+                  pricing: {
+                    marketPrice: card.marketPrice,
+                    lowPrice: card.lowestPrice,
+                    source: 'TCGPlayer',
+                    lastUpdated: new Date().toISOString(),
+                  },
+                  inStock: true,
+                  stock: 1,
+                  offers: [`$${card.marketPrice.toFixed(2)}`],
+                  provider: 'TCGPlayer',
+                  detailUrl: `https://www.tcgplayer.com/product/${card.productId}`,
+                  types: card.customAttributes?.energyType || [],
+                  weaknesses: [],
+                  resistances: [],
+                  attacks: [],
+                  hp: null,
+                  nationalPokedexNumbers: [],
+                }}
+                showAddToCart={true}
+                backgroundColor="bg-white"
+                style={{ backgroundColor: '#FAFAFA' }}
               />
             ))
           )}
