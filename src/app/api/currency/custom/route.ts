@@ -13,10 +13,15 @@ let customPriceCache: {
 // Get custom price or fallback to API
 export async function GET(request: NextRequest) {
   try {
+    console.log('[CustomPriceAPI] GET request - Current cache:', customPriceCache);
+    
     // Check if custom price exists and is still valid
     if (customPriceCache.customPrice && customPriceCache.updatedAt) {
       const daysSinceUpdate = (Date.now() - new Date(customPriceCache.updatedAt).getTime()) / (1000 * 60 * 60 * 24);
+      console.log('[CustomPriceAPI] Days since update:', daysSinceUpdate);
+      
       if (daysSinceUpdate < 7) {
+        console.log('[CustomPriceAPI] Returning custom price:', customPriceCache.customPrice);
         return NextResponse.json({
           customPrice: customPriceCache.customPrice,
           updatedAt: customPriceCache.updatedAt,
@@ -24,6 +29,8 @@ export async function GET(request: NextRequest) {
         });
       }
     }
+    
+    console.log('[CustomPriceAPI] No valid custom price found');
 
     // Fallback to blue dollar API
     const blueResponse = await fetch('https://dolarapi.com/v1/dolares/blue', {
@@ -58,10 +65,15 @@ export async function GET(request: NextRequest) {
 // Set custom price
 export async function POST(request: NextRequest) {
   try {
+    console.log('[CustomPriceAPI] POST request - Setting custom price');
+    
     const body = await request.json();
     const { price } = body;
+    
+    console.log('[CustomPriceAPI] Received price:', price);
 
     if (!price || typeof price !== 'number' || price <= 0) {
+      console.error('[CustomPriceAPI] Invalid price provided:', price);
       return NextResponse.json(
         { error: 'Invalid price provided' },
         { status: 400 }
@@ -73,6 +85,8 @@ export async function POST(request: NextRequest) {
       customPrice: price,
       updatedAt: new Date().toISOString(),
     };
+    
+    console.log('[CustomPriceAPI] Custom price set successfully:', customPriceCache);
 
     return NextResponse.json({
       success: true,

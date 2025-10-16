@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const idsParam = searchParams.get('ids'); // Comma-separated IDs
     
+    console.log('[InventoryAPI] GET request - Total items in cache:', inventoryCache.size);
+    
     if (idsParam) {
       // Return stock for specific IDs
       const ids = idsParam.split(',').map(id => id.trim());
@@ -18,6 +20,8 @@ export async function GET(request: NextRequest) {
       ids.forEach(id => {
         result[id] = inventoryCache.get(id) || 0;
       });
+      
+      console.log('[InventoryAPI] Requested IDs:', ids.length, 'Found in stock:', Object.values(result).filter(q => q > 0).length);
       
       return NextResponse.json({
         inventory: result,
@@ -48,10 +52,13 @@ export async function GET(request: NextRequest) {
 // Upload CSV inventory
 export async function POST(request: NextRequest) {
   try {
+    console.log('[InventoryAPI] POST request - Uploading CSV...');
+    
     const body = await request.json();
     const { csvData } = body;
 
     if (!csvData || typeof csvData !== 'string') {
+      console.error('[InventoryAPI] Invalid CSV data provided');
       return NextResponse.json(
         { error: 'Invalid CSV data provided' },
         { status: 400 }
@@ -61,7 +68,10 @@ export async function POST(request: NextRequest) {
     // Parse CSV
     const lines = csvData.trim().split('\n');
     
+    console.log('[InventoryAPI] CSV has', lines.length, 'lines');
+    
     if (lines.length < 2) {
+      console.error('[InventoryAPI] CSV file is empty or invalid');
       return NextResponse.json(
         { error: 'CSV file is empty or invalid' },
         { status: 400 }
@@ -71,6 +81,8 @@ export async function POST(request: NextRequest) {
     // Skip header row
     const header = lines[0];
     const dataLines = lines.slice(1);
+    
+    console.log('[InventoryAPI] Clearing existing inventory (', inventoryCache.size, 'items)');
     
     // Clear existing inventory
     inventoryCache.clear();
@@ -103,6 +115,23 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    console.log('[InventoryAPI] Upload complete:', {
+      processedCount,
+      errorCount,
+      totalCards: inventoryCache.size
+    });
+    
+    // Log first 5 items for debugging
+    const sampleItems: any[] = [];
+    let count = 0;
+    inventoryCache.forEach((qty, id) => {
+      if (count < 5) {
+        sampleItems.push({ id, qty });
+        count++;
+      }
+    });
+    console.log('[InventoryAPI] Sample inventory items:', sampleItems);
+    
     return NextResponse.json({
       success: true,
       processedCount,
