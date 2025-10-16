@@ -107,7 +107,7 @@ export default function Cart() {
                                 <li key={item.card.id} className="flex py-6">
                                   <div className="h-24 w-16 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
                                     <Image
-                                      src={item.card.images.small}
+                                      src={(item.card as any).imageUrl || item.card.images?.large || item.card.images?.small || '/placeholder-card.svg'}
                                       alt={item.card.name}
                                       width={64}
                                       height={96}
