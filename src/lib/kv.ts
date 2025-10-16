@@ -1,34 +1,38 @@
-import { Redis } from '@upstash/redis';
+import { createClient } from 'redis';
 
-// Initialize Upstash Redis client
-// Supports both REST API format and standard Redis URL
-let redis: Redis;
+// Initialize Redis client
+let redisClient: ReturnType<typeof createClient> | null = null;
 let isRedisConfigured = false;
-
-if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-  // REST API format (recommended)
-  redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
-  });
-  isRedisConfigured = true;
-  console.log('[KV] Using Upstash Redis REST API');
-} else if (process.env.REDIS_URL) {
-  // Standard Redis URL format (redis://...)
-  redis = Redis.fromEnv();
-  isRedisConfigured = true;
-  console.log('[KV] Using Redis from REDIS_URL');
-} else {
-  // Fallback for local development
-  redis = new Redis({
-    url: '',
-    token: '',
-  });
-  console.warn('[KV] Redis not configured. Using in-memory fallback for local development.');
-}
 
 // In-memory fallback for local development
 const memoryStore = new Map<string, any>();
+
+// Initialize Redis connection
+async function getRedisClient() {
+  if (!process.env.REDIS_URL) {
+    return null;
+  }
+
+  if (!redisClient) {
+    try {
+      redisClient = createClient({ url: process.env.REDIS_URL });
+      
+      redisClient.on('error', (err) => {
+        console.error('[KV] Redis Client Error:', err);
+      });
+
+      await redisClient.connect();
+      isRedisConfigured = true;
+      console.log('[KV] Redis connected successfully');
+    } catch (error) {
+      console.error('[KV] Failed to connect to Redis:', error);
+      redisClient = null;
+      isRedisConfigured = false;
+    }
+  }
+
+  return redisClient;
+}
 
 // ==================== INVENTORY ====================
 
@@ -40,7 +44,9 @@ const INVENTORY_INDEX_KEY = 'inventory:_index';
  */
 export async function getInventory(productIds?: string[]): Promise<Record<string, number>> {
   try {
-    if (!isRedisConfigured) {
+    const client = await getRedisClient();
+    
+    if (!client) {
       // Fallback to in-memory
       const result: Record<string, number> = {};
       if (productIds && productIds.length > 0) {
@@ -59,26 +65,28 @@ export async function getInventory(productIds?: string[]): Promise<Record<string
     if (productIds && productIds.length > 0) {
       // Get specific cards
       const keys = productIds.map(id => `${INVENTORY_KEY_PREFIX}${id}`);
-      const values = await redis.mget<number[]>(...keys);
+      const values = await client.mGet(keys);
       
       const result: Record<string, number> = {};
       productIds.forEach((id, index) => {
-        result[id] = values[index] || 0;
+        const value = values[index];
+        result[id] = value ? parseInt(value as string, 10) : 0;
       });
       
       return result;
     } else {
       // Get all inventory
-      const allKeys = await redis.smembers<string[]>(INVENTORY_INDEX_KEY) || [];
+      const allKeys = await client.sMembers(INVENTORY_INDEX_KEY) || [];
       if (allKeys.length === 0) return {};
       
       const keys = allKeys.map(id => `${INVENTORY_KEY_PREFIX}${id}`);
-      const values = await redis.mget<number[]>(...keys);
+      const values = await client.mGet(keys);
       
       const result: Record<string, number> = {};
       allKeys.forEach((id, index) => {
-        if (values[index] !== null && values[index] !== undefined) {
-          result[id] = values[index];
+        const value = values[index];
+        if (value !== null && value !== undefined) {
+          result[id] = parseInt(value as string, 10);
         }
       });
       
@@ -95,9 +103,10 @@ export async function getInventory(productIds?: string[]): Promise<Record<string
  */
 export async function setInventoryItem(productId: string, quantity: number): Promise<void> {
   try {
+    const client = await getRedisClient();
     const key = `${INVENTORY_KEY_PREFIX}${productId}`;
     
-    if (!isRedisConfigured) {
+    if (!client) {
       // Fallback to in-memory
       if (quantity > 0) {
         memoryStore.set(key, quantity);
@@ -115,11 +124,11 @@ export async function setInventoryItem(productId: string, quantity: number): Pro
     }
 
     if (quantity > 0) {
-      await redis.set(key, quantity);
-      await redis.sadd(INVENTORY_INDEX_KEY, productId);
+      await client.set(key, quantity.toString());
+      await client.sAdd(INVENTORY_INDEX_KEY, productId);
     } else {
-      await redis.del(key);
-      await redis.srem(INVENTORY_INDEX_KEY, productId);
+      await client.del(key);
+      await client.sRem(INVENTORY_INDEX_KEY, productId);
     }
   } catch (error) {
     console.error(`[KV] Error setting inventory for ${productId}:`, error);
@@ -132,9 +141,10 @@ export async function setInventoryItem(productId: string, quantity: number): Pro
  */
 export async function setInventoryBulk(items: Record<string, number>): Promise<number> {
   try {
+    const client = await getRedisClient();
     const productIds = Object.keys(items);
     
-    if (!isRedisConfigured) {
+    if (!client) {
       // Fallback to in-memory
       memoryStore.delete(INVENTORY_INDEX_KEY);
       const newIndex: string[] = [];
@@ -154,10 +164,11 @@ export async function setInventoryBulk(items: Record<string, number>): Promise<n
       return count;
     }
 
-    const pipeline = redis.pipeline();
+    // Use Redis multi/exec for atomic operations
+    const multi = client.multi();
     
     // Clear old index
-    pipeline.del(INVENTORY_INDEX_KEY);
+    multi.del(INVENTORY_INDEX_KEY);
     
     // Set all items
     let count = 0;
@@ -165,13 +176,13 @@ export async function setInventoryBulk(items: Record<string, number>): Promise<n
       const quantity = items[productId];
       if (quantity > 0) {
         const key = `${INVENTORY_KEY_PREFIX}${productId}`;
-        pipeline.set(key, quantity);
-        pipeline.sadd(INVENTORY_INDEX_KEY, productId);
+        multi.set(key, quantity.toString());
+        multi.sAdd(INVENTORY_INDEX_KEY, productId);
         count++;
       }
     });
     
-    await pipeline.exec();
+    await multi.exec();
     
     console.log(`[KV] Bulk set ${count} inventory items`);
     return count;
@@ -186,7 +197,9 @@ export async function setInventoryBulk(items: Record<string, number>): Promise<n
  */
 export async function clearInventory(): Promise<number> {
   try {
-    if (!isRedisConfigured) {
+    const client = await getRedisClient();
+    
+    if (!client) {
       // Fallback to in-memory
       const index = memoryStore.get(INVENTORY_INDEX_KEY) as string[] || [];
       const count = index.length;
@@ -200,17 +213,17 @@ export async function clearInventory(): Promise<number> {
       return count;
     }
 
-    const allKeys = await redis.smembers<string[]>(INVENTORY_INDEX_KEY) || [];
+    const allKeys = await client.sMembers(INVENTORY_INDEX_KEY) || [];
     
     if (allKeys.length === 0) return 0;
     
-    const pipeline = redis.pipeline();
+    const multi = client.multi();
     allKeys.forEach(id => {
-      pipeline.del(`${INVENTORY_KEY_PREFIX}${id}`);
+      multi.del(`${INVENTORY_KEY_PREFIX}${id}`);
     });
-    pipeline.del(INVENTORY_INDEX_KEY);
+    multi.del(INVENTORY_INDEX_KEY);
     
-    await pipeline.exec();
+    await multi.exec();
     
     console.log(`[KV] Cleared ${allKeys.length} inventory items`);
     return allKeys.length;
@@ -225,13 +238,15 @@ export async function clearInventory(): Promise<number> {
  */
 export async function getInventoryCount(): Promise<number> {
   try {
-    if (!isRedisConfigured) {
+    const client = await getRedisClient();
+    
+    if (!client) {
       // Fallback to in-memory
       const index = memoryStore.get(INVENTORY_INDEX_KEY) as string[] || [];
       return index.length;
     }
 
-    const count = await redis.scard(INVENTORY_INDEX_KEY);
+    const count = await client.sCard(INVENTORY_INDEX_KEY);
     return count || 0;
   } catch (error) {
     console.error('[KV] Error getting inventory count:', error);
@@ -249,7 +264,9 @@ const CUSTOM_PRICE_UPDATED_KEY = 'custom_dollar_price:updated';
  */
 export async function getCustomPrice(): Promise<{ price: number | null; updatedAt: string | null }> {
   try {
-    if (!isRedisConfigured) {
+    const client = await getRedisClient();
+    
+    if (!client) {
       // Fallback to in-memory
       const price = memoryStore.get(CUSTOM_PRICE_KEY) as number | null;
       const updatedAt = memoryStore.get(CUSTOM_PRICE_UPDATED_KEY) as string | null;
@@ -265,10 +282,12 @@ export async function getCustomPrice(): Promise<{ price: number | null; updatedA
       return { price: null, updatedAt: null };
     }
 
-    const [price, updatedAt] = await Promise.all([
-      redis.get<number>(CUSTOM_PRICE_KEY),
-      redis.get<string>(CUSTOM_PRICE_UPDATED_KEY)
+    const [priceStr, updatedAt] = await Promise.all([
+      client.get(CUSTOM_PRICE_KEY),
+      client.get(CUSTOM_PRICE_UPDATED_KEY)
     ]);
+    
+    const price = priceStr ? parseFloat(priceStr) : null;
     
     if (price && updatedAt) {
       // Check if still valid (within 7 days)
@@ -295,9 +314,10 @@ export async function getCustomPrice(): Promise<{ price: number | null; updatedA
  */
 export async function setCustomPrice(price: number): Promise<void> {
   try {
+    const client = await getRedisClient();
     const updatedAt = new Date().toISOString();
     
-    if (!isRedisConfigured) {
+    if (!client) {
       // Fallback to in-memory
       memoryStore.set(CUSTOM_PRICE_KEY, price);
       memoryStore.set(CUSTOM_PRICE_UPDATED_KEY, updatedAt);
@@ -306,8 +326,8 @@ export async function setCustomPrice(price: number): Promise<void> {
     }
 
     await Promise.all([
-      redis.set(CUSTOM_PRICE_KEY, price),
-      redis.set(CUSTOM_PRICE_UPDATED_KEY, updatedAt)
+      client.set(CUSTOM_PRICE_KEY, price.toString()),
+      client.set(CUSTOM_PRICE_UPDATED_KEY, updatedAt)
     ]);
     
     console.log('[KV] Custom price set:', price);
@@ -322,7 +342,9 @@ export async function setCustomPrice(price: number): Promise<void> {
  */
 export async function clearCustomPrice(): Promise<void> {
   try {
-    if (!isRedisConfigured) {
+    const client = await getRedisClient();
+    
+    if (!client) {
       // Fallback to in-memory
       memoryStore.delete(CUSTOM_PRICE_KEY);
       memoryStore.delete(CUSTOM_PRICE_UPDATED_KEY);
@@ -331,8 +353,8 @@ export async function clearCustomPrice(): Promise<void> {
     }
 
     await Promise.all([
-      redis.del(CUSTOM_PRICE_KEY),
-      redis.del(CUSTOM_PRICE_UPDATED_KEY)
+      client.del(CUSTOM_PRICE_KEY),
+      client.del(CUSTOM_PRICE_UPDATED_KEY)
     ]);
     
     console.log('[KV] Custom price cleared');

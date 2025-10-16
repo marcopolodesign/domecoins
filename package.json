@@ -29,6 +29,7 @@
     "react-hook-form": "^7.62.0",
     "react-hot-toast": "^2.6.0",
     "react-redux": "^9.2.0",
+    "redis": "^5.8.3",
     "tailwindcss": "^3.4.17"
   },
   "devDependencies": {
