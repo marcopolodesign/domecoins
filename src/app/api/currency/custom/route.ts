@@ -1,36 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getCustomPrice, setCustomPrice, clearCustomPrice } from '@/lib/kv';
 
-// In-memory storage (will reset on deployment, but that's acceptable for this use case)
-// For production, you should use Vercel KV or a database
-let customPriceCache: {
-  customPrice: number | null;
-  updatedAt: string | null;
-} = {
-  customPrice: null,
-  updatedAt: null,
-};
-
-// Get custom price or fallback to API
+// Get custom price from Vercel KV
 export async function GET(request: NextRequest) {
   try {
-    console.log('[CustomPriceAPI] GET request - Current cache:', customPriceCache);
+    console.log('[CustomPriceAPI] GET request - Fetching from KV...');
     
-    // Check if custom price exists and is still valid
-    if (customPriceCache.customPrice && customPriceCache.updatedAt) {
-      const daysSinceUpdate = (Date.now() - new Date(customPriceCache.updatedAt).getTime()) / (1000 * 60 * 60 * 24);
-      console.log('[CustomPriceAPI] Days since update:', daysSinceUpdate);
-      
-      if (daysSinceUpdate < 7) {
-        console.log('[CustomPriceAPI] Returning custom price:', customPriceCache.customPrice);
-        return NextResponse.json({
-          customPrice: customPriceCache.customPrice,
-          updatedAt: customPriceCache.updatedAt,
-          isCustom: true,
-        });
-      }
+    const { price, updatedAt } = await getCustomPrice();
+    
+    if (price !== null) {
+      console.log('[CustomPriceAPI] Returning custom price from KV:', price);
+      return NextResponse.json({
+        customPrice: price,
+        updatedAt,
+        isCustom: true,
+        storage: 'Vercel KV',
+      });
     }
     
-    console.log('[CustomPriceAPI] No valid custom price found');
+    console.log('[CustomPriceAPI] No custom price found in KV');
 
     // Fallback to blue dollar API
     const blueResponse = await fetch('https://dolarapi.com/v1/dolares/blue', {
@@ -43,6 +31,7 @@ export async function GET(request: NextRequest) {
         bluePrice: blueData.venta,
         customPrice: null,
         isCustom: false,
+        storage: 'External API',
       });
     }
 
@@ -51,10 +40,11 @@ export async function GET(request: NextRequest) {
       bluePrice: 1200,
       customPrice: null,
       isCustom: false,
+      storage: 'Fallback',
     });
 
   } catch (error: any) {
-    console.error('Error fetching currency:', error);
+    console.error('[CustomPriceAPI] Error fetching custom price:', error);
     return NextResponse.json(
       { error: 'Failed to fetch currency', details: error.message },
       { status: 500 }
@@ -62,10 +52,10 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Set custom price
+// Set custom price in Vercel KV
 export async function POST(request: NextRequest) {
   try {
-    console.log('[CustomPriceAPI] POST request - Setting custom price');
+    console.log('[CustomPriceAPI] POST request - Setting custom price in KV');
     
     const body = await request.json();
     const { price } = body;
@@ -80,23 +70,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Store in memory
-    customPriceCache = {
-      customPrice: price,
-      updatedAt: new Date().toISOString(),
-    };
+    // Store in Vercel KV
+    await setCustomPrice(price);
     
-    console.log('[CustomPriceAPI] Custom price set successfully:', customPriceCache);
+    const updatedAt = new Date().toISOString();
+    
+    console.log('[CustomPriceAPI] Custom price set successfully in KV:', price);
 
     return NextResponse.json({
       success: true,
       customPrice: price,
-      updatedAt: customPriceCache.updatedAt,
-      note: 'Price stored in memory. Will reset on redeployment. For persistent storage, upgrade to Vercel KV.',
+      updatedAt,
+      storage: 'Vercel KV (persistent)',
+      note: 'Price will persist across deployments.',
     });
 
   } catch (error: any) {
-    console.error('Error setting custom price:', error);
+    console.error('[CustomPriceAPI] Error setting custom price:', error);
     return NextResponse.json(
       { error: 'Failed to set custom price', details: error.message },
       { status: 500 }
@@ -104,25 +94,26 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Delete custom price (revert to API)
+// Delete custom price from Vercel KV (revert to API)
 export async function DELETE(request: NextRequest) {
   try {
-    customPriceCache = {
-      customPrice: null,
-      updatedAt: null,
-    };
+    console.log('[CustomPriceAPI] DELETE request - Removing custom price from KV');
+    
+    await clearCustomPrice();
+
+    console.log('[CustomPriceAPI] Custom price removed from KV');
 
     return NextResponse.json({
       success: true,
       message: 'Custom price removed, using API',
+      storage: 'Vercel KV',
     });
 
   } catch (error: any) {
-    console.error('Error deleting custom price:', error);
+    console.error('[CustomPriceAPI] Error deleting custom price:', error);
     return NextResponse.json(
       { error: 'Failed to delete custom price', details: error.message },
       { status: 500 }
     );
   }
 }
-

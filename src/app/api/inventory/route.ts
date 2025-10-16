@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// In-memory inventory storage
-// Key: TCGplayer Id, Value: quantity
-let inventoryCache: Map<string, number> = new Map();
+import { 
+  getInventory, 
+  setInventoryBulk, 
+  clearInventory, 
+  getInventoryCount 
+} from '@/lib/kv';
 
 // Get inventory for specific card IDs
 export async function GET(request: NextRequest) {
@@ -10,38 +12,33 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const idsParam = searchParams.get('ids'); // Comma-separated IDs
     
-    console.log('[InventoryAPI] GET request - Total items in cache:', inventoryCache.size);
+    const totalCards = await getInventoryCount();
+    console.log('[InventoryAPI] GET request - Total items in KV:', totalCards);
     
     if (idsParam) {
       // Return stock for specific IDs
       const ids = idsParam.split(',').map(id => id.trim());
-      const result: Record<string, number> = {};
+      const inventory = await getInventory(ids);
       
-      ids.forEach(id => {
-        result[id] = inventoryCache.get(id) || 0;
-      });
-      
-      console.log('[InventoryAPI] Requested IDs:', ids.length, 'Found in stock:', Object.values(result).filter(q => q > 0).length);
+      const inStockCount = Object.values(inventory).filter(q => q > 0).length;
+      console.log('[InventoryAPI] Requested IDs:', ids.length, 'Found in stock:', inStockCount);
       
       return NextResponse.json({
-        inventory: result,
-        totalCards: inventoryCache.size,
+        inventory,
+        totalCards,
       });
     }
     
     // Return all inventory
-    const allInventory: Record<string, number> = {};
-    inventoryCache.forEach((quantity, id) => {
-      allInventory[id] = quantity;
-    });
+    const inventory = await getInventory();
     
     return NextResponse.json({
-      inventory: allInventory,
-      totalCards: inventoryCache.size,
+      inventory,
+      totalCards,
     });
 
   } catch (error: any) {
-    console.error('Error fetching inventory:', error);
+    console.error('[InventoryAPI] Error fetching inventory:', error);
     return NextResponse.json(
       { error: 'Failed to fetch inventory', details: error.message },
       { status: 500 }
@@ -52,7 +49,7 @@ export async function GET(request: NextRequest) {
 // Upload CSV inventory
 export async function POST(request: NextRequest) {
   try {
-    console.log('[InventoryAPI] POST request - Uploading CSV...');
+    console.log('[InventoryAPI] POST request - Uploading CSV to KV...');
     
     const body = await request.json();
     const { csvData } = body;
@@ -79,16 +76,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Skip header row
-    const header = lines[0];
     const dataLines = lines.slice(1);
     
-    console.log('[InventoryAPI] Clearing existing inventory (', inventoryCache.size, 'items)');
+    const oldCount = await getInventoryCount();
+    console.log('[InventoryAPI] Clearing existing inventory (', oldCount, 'items)');
     
     // Clear existing inventory
-    inventoryCache.clear();
+    await clearInventory();
     
     let processedCount = 0;
     let errorCount = 0;
+    const inventoryItems: Record<string, number> = {};
     
     // Parse each line
     dataLines.forEach((line, index) => {
@@ -104,45 +102,43 @@ export async function POST(request: NextRequest) {
           
           if (tcgplayerId && addToQuantity > 0) {
             // Add or update inventory
-            const currentQty = inventoryCache.get(tcgplayerId) || 0;
-            inventoryCache.set(tcgplayerId, currentQty + addToQuantity);
+            const currentQty = inventoryItems[tcgplayerId] || 0;
+            inventoryItems[tcgplayerId] = currentQty + addToQuantity;
             processedCount++;
           }
         }
       } catch (err) {
         errorCount++;
-        console.error(`Error parsing line ${index + 2}:`, err);
+        console.error(`[InventoryAPI] Error parsing line ${index + 2}:`, err);
       }
     });
+
+    // Bulk set all inventory items in KV
+    const totalCards = await setInventoryBulk(inventoryItems);
 
     console.log('[InventoryAPI] Upload complete:', {
       processedCount,
       errorCount,
-      totalCards: inventoryCache.size
+      totalCards
     });
     
     // Log first 5 items for debugging
-    const sampleItems: any[] = [];
-    let count = 0;
-    inventoryCache.forEach((qty, id) => {
-      if (count < 5) {
-        sampleItems.push({ id, qty });
-        count++;
-      }
-    });
+    const sampleItems = Object.entries(inventoryItems)
+      .slice(0, 5)
+      .map(([id, qty]) => ({ id, qty }));
     console.log('[InventoryAPI] Sample inventory items:', sampleItems);
     
     return NextResponse.json({
       success: true,
       processedCount,
       errorCount,
-      totalCards: inventoryCache.size,
+      totalCards,
       updatedAt: new Date().toISOString(),
-      note: 'Inventory stored in memory. Will reset on redeployment.',
+      storage: 'Vercel KV (persistent)',
     });
 
   } catch (error: any) {
-    console.error('Error uploading inventory:', error);
+    console.error('[InventoryAPI] Error uploading inventory:', error);
     return NextResponse.json(
       { error: 'Failed to upload inventory', details: error.message },
       { status: 500 }
@@ -153,8 +149,10 @@ export async function POST(request: NextRequest) {
 // Clear inventory
 export async function DELETE(request: NextRequest) {
   try {
-    const previousSize = inventoryCache.size;
-    inventoryCache.clear();
+    const previousSize = await getInventoryCount();
+    await clearInventory();
+
+    console.log('[InventoryAPI] Cleared', previousSize, 'items from KV');
 
     return NextResponse.json({
       success: true,
@@ -162,11 +160,10 @@ export async function DELETE(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Error clearing inventory:', error);
+    console.error('[InventoryAPI] Error clearing inventory:', error);
     return NextResponse.json(
       { error: 'Failed to clear inventory', details: error.message },
       { status: 500 }
     );
   }
 }
-
