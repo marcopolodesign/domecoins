@@ -2,12 +2,12 @@
 
 import { Fragment } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
-import { XMarkIcon, MinusIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon } from '@heroicons/react/24/outline'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState } from '@/store'
 import { closeCart, removeFromCart, updateQuantity } from '@/store/cartSlice'
-import Image from 'next/image'
 import Link from 'next/link'
+import CartItemCard from './CartItemCard'
 
 export default function Cart() {
   const dispatch = useDispatch()
@@ -104,72 +104,15 @@ export default function Cart() {
                           ) : (
                             <ul role="list" className="-my-6 divide-y divide-gray-200">
                               {items.map((item) => (
-                                <li key={item.card.id} className="flex py-6">
-                                  <div className="h-24 w-16 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
-                                    <Image
-                                      src={(item.card as any).imageUrl || item.card.images?.large || item.card.images?.small || '/placeholder-card.svg'}
-                                      alt={item.card.name}
-                                      width={64}
-                                      height={96}
-                                      className="h-full w-full object-cover object-center"
-                                    />
-                                  </div>
-
-                                  <div className="ml-4 flex flex-1 flex-col">
-                                    <div>
-                                      <div className="flex justify-between text-base font-medium text-gray-900">
-                                        <h3>
-                                          <Link href={`/cards/${item.card.id}`} onClick={handleClose}>
-                                            {item.card.name}
-                                          </Link>
-                                        </h3>
-                                        <div className="ml-4 text-right">
-                                          <p className="font-medium">
-                                            AR${item.priceArs.toLocaleString('es-AR')}
-                                          </p>
-                                        </div>
-                                      </div>
-                                      <p className="mt-1 text-sm text-gray-500">
-                                        {item.card.set.name} #{item.card.number}
-                                      </p>
-                                      {item.card.rarity && (
-                                        <p className="text-xs text-gray-400 capitalize">
-                                          {item.card.rarity}
-                                        </p>
-                                      )}
-                                    </div>
-                                    <div className="flex flex-1 items-end justify-between text-sm">
-                                      <div className="flex items-center space-x-2">
-                                        <button
-                                          onClick={() => handleUpdateQuantity(item.card.id, item.quantity - 1)}
-                                          className="p-1 rounded-md hover:bg-gray-100 transition-colors"
-                                          disabled={item.quantity <= 1}
-                                        >
-                                          <MinusIcon className="h-4 w-4 text-gray-400" />
-                                        </button>
-                                        <span className="text-gray-500 min-w-[2rem] text-center">
-                                          {item.quantity}
-                                        </span>
-                                        <button
-                                          onClick={() => handleUpdateQuantity(item.card.id, item.quantity + 1)}
-                                          className="p-1 rounded-md hover:bg-gray-100 transition-colors"
-                                        >
-                                          <PlusIcon className="h-4 w-4 text-gray-400" />
-                                        </button>
-                                      </div>
-
-                                      <div className="flex">
-                                        <button
-                                          type="button"
-                                          onClick={() => handleRemoveItem(item.card.id)}
-                                          className="p-1 text-red-600 hover:text-red-500 transition-colors"
-                                        >
-                                          <TrashIcon className="h-4 w-4" />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </li>
+                                <CartItemCard
+                                  key={item.card.id}
+                                  card={item.card}
+                                  quantity={item.quantity}
+                                  priceArs={item.priceArs}
+                                  onUpdateQuantity={handleUpdateQuantity}
+                                  onRemoveItem={handleRemoveItem}
+                                  onClose={handleClose}
+                                />
                               ))}
                             </ul>
                           )}
