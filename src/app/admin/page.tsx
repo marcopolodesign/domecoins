@@ -253,12 +253,12 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 mt-20 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 mt-24 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
         <div className="bg-white shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 font-thunder">
+              <h3 className="uppercase leading-6 font-medium text-gray-900 font-thunder text-4xl">
                 Configuración del Precio del Dólar
               </h3>
               <button
@@ -412,7 +412,7 @@ export default function AdminPage() {
           <div className="px-4 py-5 sm:p-6">
             <h4 className="text-sm font-medium text-gray-900 mb-4">Información del Inventario</h4>
             <ul className="text-sm text-gray-600 space-y-2">
-              <li>• El archivo CSV debe contener la columna "TCGplayer Id" y "Add to Quantity".</li>
+              <li>• El archivo CSV debe contener la columna [TCGplayer Id] y [Add to Quantity].</li>
               <li>• El inventario se actualiza completamente con cada carga.</li>
               <li>• Los productos sin stock no se mostrarán como disponibles.</li>
               <li>• El inventario se almacena en memoria y se reinicia con cada deployment.</li>

@@ -169,6 +169,24 @@ export default function ProductCard({
           {setName}
         </p>
 
+        {/* Stock Status */}
+        <div className="mb-3">
+          {card.inStock ? (
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-xs text-green-600 font-medium">EN STOCK</span>
+              {card.stock && card.stock > 1 && (
+                <span className="text-xs text-gray-500">({card.stock} unidades)</span>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+              <span className="text-xs text-yellow-600 font-medium">ENCARGO</span>
+            </div>
+          )}
+        </div>
+
         {/* HP and Rarity */}
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           {card.hp && (
