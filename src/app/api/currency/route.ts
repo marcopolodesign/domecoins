@@ -1,21 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getCustomPrice as getCustomPriceFromKV } from '@/lib/kv'
 
-// Check for custom price from the custom endpoint
+// Check for custom price from KV
 async function getCustomPrice(): Promise<number | null> {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/currency/custom`, {
-      next: { revalidate: 0 } // Don't cache
-    });
+    const { price } = await getCustomPriceFromKV();
     
-    if (response.ok) {
-      const data = await response.json();
-      if (data.customPrice) {
-        console.log(`Using custom dolar price: $${data.customPrice}`);
-        return data.customPrice;
-      }
+    if (price !== null) {
+      console.log(`[CurrencyAPI] Using custom dolar price from KV: $${price}`);
+      return price;
     }
   } catch (error) {
-    console.error('Error fetching custom price:', error);
+    console.error('[CurrencyAPI] Error fetching custom price from KV:', error);
   }
   return null;
 }

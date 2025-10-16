@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchTCGPlayerPrices } from '@/lib/tcgplayer-price-scraper';
+import { getInventory } from '@/lib/kv';
 
 /**
  * Search API with TCGPlayer Prices
@@ -28,20 +29,15 @@ export async function GET(request: NextRequest) {
     console.log(`[SearchWithPrices] Got ${tcgResults.length} results from TCGPlayer`);
 
     // Get inventory for all product IDs
-    const productIds = tcgResults.map(r => r.productId.toString()).join(',');
+    const productIds = tcgResults.map(r => r.productId.toString());
     let inventoryMap: Record<string, number> = {};
     
     try {
-      const inventoryResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/inventory?ids=${productIds}`, {
-        next: { revalidate: 0 }
-      });
-      
-      if (inventoryResponse.ok) {
-        const inventoryData = await inventoryResponse.json();
-        inventoryMap = inventoryData.inventory || {};
-      }
+      // Fetch inventory directly from KV
+      inventoryMap = await getInventory(productIds);
+      console.log('[SearchWithPrices] Fetched inventory for', productIds.length, 'products');
     } catch (error) {
-      console.error('[SearchWithPrices] Error fetching inventory:', error);
+      console.error('[SearchWithPrices] Error fetching inventory from KV:', error);
     }
 
     // Convert TCGPlayer results to our card format
