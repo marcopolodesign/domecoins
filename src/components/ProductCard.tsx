@@ -128,8 +128,8 @@ export default function ProductCard({
           />
         </div>
 
-        {/* Favorite button */}
-        <button
+        {/* Favorite button - Hidden for now */}
+        {/* <button
           onClick={handleToggleFavorite}
           className="absolute top-2 right-2 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all hover:scale-110"
         >
@@ -138,7 +138,7 @@ export default function ProductCard({
           ) : (
             <HeartIcon className="h-5 w-5 text-gray-600" />
           )}
-        </button>
+        </button> */}
 
         {/* Pokemon types */}
         {card.types && card.types.length > 0 && (
@@ -157,15 +157,15 @@ export default function ProductCard({
           </div>
         )}
 
-        {/* TCGPlayer badge (if price from TCGPlayer) */}
-        {card.pricing?.source === 'TCGPlayer' && (
+        {/* TCGPlayer badge - Hidden for now */}
+        {/* {card.pricing?.source === 'TCGPlayer' && (
           <div className="absolute bottom-2 right-2">
             <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-500 text-white shadow-md flex items-center gap-1">
               <SparklesIcon className="h-3 w-3" />
               Precio Real
             </span>
           </div>
-        )}
+        )} */}
       </div>
 
       {/* Card details */}
@@ -215,21 +215,12 @@ export default function ProductCard({
         {/* Price */}
         {usdPrice ? (
           <div className="mb-4">
-            <div className="flex items-baseline justify-between mb-1">
-              <div>
-                <span className="text-2xl font-bold text-gray-900">
-                  AR${arsPrice!.toLocaleString('es-AR', { 
-                    minimumFractionDigits: 0, 
-                    maximumFractionDigits: 0 
-                  })}
-                </span>
-              </div>
-              {card.pricing?.source === 'TCGPlayer' && (
-                <span className="text-xs text-green-600 font-medium">
-                  ✓ Actualizado
-                </span>
-              )}
-            </div>
+            <span className="text-2xl font-bold text-gray-900">
+              AR${arsPrice!.toLocaleString('es-AR', { 
+                minimumFractionDigits: 0, 
+                maximumFractionDigits: 0 
+              })}
+            </span>
           </div>
         ) : (
           <div className="mb-4">

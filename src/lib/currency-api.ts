@@ -9,7 +9,7 @@ export interface ExchangeRates {
 class CurrencyAPI {
   private cache: ExchangeRates | null = null;
   private cacheExpiry: Date | null = null;
-  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  private readonly CACHE_DURATION = 30 * 1000; // 30 seconds only for testing custom prices
 
   private isValidCacheEntry(): boolean {
     return this.cache !== null && 

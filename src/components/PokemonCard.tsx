@@ -103,8 +103,8 @@ export default function PokemonCard({
           />
         </div>
 
-        {/* Favorite button */}
-        <button
+        {/* Favorite button - Hidden for now */}
+        {/* <button
           onClick={handleToggleFavorite}
           className="absolute top-2 right-2 p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition-colors"
         >
@@ -113,7 +113,7 @@ export default function PokemonCard({
           ) : (
             <HeartIcon className="h-5 w-5 text-gray-600" />
           )}
-        </button>
+        </button> */}
 
         {/* Pokemon types */}
         {card.types && card.types.length > 0 && (

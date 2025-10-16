@@ -40,7 +40,7 @@ async function fetchFromSource(source: typeof CURRENCY_SOURCES[0]): Promise<numb
       headers: {
         'User-Agent': 'Pokemon-TCG-Argentina/1.0',
       },
-      next: { revalidate: 300 }, // Cache for 5 minutes
+      next: { revalidate: 60 }, // Cache for 1 minute only
     })
 
     if (!response.ok) {
@@ -63,24 +63,32 @@ async function fetchFromSource(source: typeof CURRENCY_SOURCES[0]): Promise<numb
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('[CurrencyAPI] GET request received');
+    
     // First, check for custom price
     const customPrice = await getCustomPrice();
     if (customPrice !== null) {
+      console.log('[CurrencyAPI] Returning CUSTOM price:', customPrice);
       return NextResponse.json({
         blueRate: customPrice,
+        rate: customPrice, // Also include as 'rate' for compatibility
         source: 'Custom',
         isCustom: true,
         timestamp: new Date().toISOString(),
       });
     }
 
+    console.log('[CurrencyAPI] No custom price, fetching from external sources...');
+    
     // Try each source until we get a valid rate
     for (const source of CURRENCY_SOURCES) {
       const rate = await fetchFromSource(source)
       
       if (rate !== null) {
+        console.log('[CurrencyAPI] Returning rate from', source.name, ':', rate);
         return NextResponse.json({
           rate,
+          blueRate: rate, // Also include as 'blueRate' for compatibility
           source: source.name,
           timestamp: new Date().toISOString(),
           success: true,

@@ -5,8 +5,9 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useSearchParams } from 'next/navigation'
 import { FunnelIcon, Squares2X2Icon, Bars3Icon } from '@heroicons/react/24/outline'
 import ProductCard from '@/components/ProductCard'
-import { RootState } from '@/store'
+import { RootState, AppDispatch } from '@/store'
 import { fetchCards, setFilters, setPage, setPageSize } from '@/store/productsSlice'
+import { fetchExchangeRate } from '@/store/currencySlice'
 
 const RARITIES = [
   'Common', 'Uncommon', 'Rare', 'Rare Holo', 'Rare Ultra',
@@ -22,7 +23,7 @@ const SORT_OPTIONS = [
 ]
 
 function CardsPageContent() {
-  const dispatch = useDispatch()
+  const dispatch = useDispatch<AppDispatch>()
   const searchParams = useSearchParams()
   const [showFilters, setShowFilters] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
@@ -34,13 +35,27 @@ function CardsPageContent() {
     filters, 
     pagination
   } = useSelector((state: RootState) => state.products)
+  
+  // Get current dollar rate from currency state
+  const { dolarBlueRate } = useSelector((state: RootState) => state.currency)
+  
+  // Fetch exchange rate on mount
+  useEffect(() => {
+    console.log('[CardsPage] Fetching exchange rate on mount...')
+    dispatch(fetchExchangeRate())
+  }, [dispatch])
+  
+  // Log the dollar rate whenever it changes
+  useEffect(() => {
+    console.log('[CardsPage] Current Dollar Rate:', dolarBlueRate)
+  }, [dolarBlueRate])
 
   // Initialize filters from URL params (only once on mount)
   useEffect(() => {
     const searchQuery = searchParams.get('search')
     const rarityFilter = searchParams.get('rarity')
 
-    const newFilters: any = {}
+    const newFilters: Record<string, string> = {}
     
     // Set default search if no query provided
     newFilters.name = searchQuery || 'pokemon'
@@ -52,11 +67,11 @@ function CardsPageContent() {
   // Fetch data when filters change (prevents double call)
   useEffect(() => {
     if (filters.name) {
-      dispatch(fetchCards({ filters }) as any)
+      dispatch(fetchCards({ filters }))
     }
   }, [dispatch, filters])
 
-  const handleFilterChange = useCallback((key: string, value: any) => {
+  const handleFilterChange = useCallback((key: string, value: string) => {
     dispatch(setFilters({ [key]: value }))
   }, [dispatch])
 
@@ -90,9 +105,12 @@ function CardsPageContent() {
     console.log('[CardsPage] Sorting cards - In stock first')
     
     return [...cards].sort((a, b) => {
-      // First priority: in-stock cards
-      if (a.inStock && !b.inStock) return -1
-      if (!a.inStock && b.inStock) return 1
+      // First priority: in-stock cards (check if property exists)
+      const aInStock = 'inStock' in a ? a.inStock : false
+      const bInStock = 'inStock' in b ? b.inStock : false
+      
+      if (aInStock && !bInStock) return -1
+      if (!aInStock && bInStock) return 1
       
       // If both have same stock status, maintain original order
       return 0
@@ -100,12 +118,14 @@ function CardsPageContent() {
   }, [cards])
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 mt-32">
       <div className="container-custom py-8">
         {/* Page header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-display font-bold text-gray-900 mb-2">
-            Catálogo de Cartas Pokemon
+          <h1 className="text-5xl font-bold text-gray-900 mb-2 font-thunder">
+            {filters.name && filters.name.trim() !== ''
+              ? `Resultados para "${filters.name}"`
+              : 'Catálogo de Cartas Pokemon'}
           </h1>
           <p className="text-gray-600">
             Explora nuestra colección completa de cartas Pokemon
@@ -200,7 +220,7 @@ function CardsPageContent() {
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                   <div>
                     <p className="text-sm font-medium text-blue-900">
-                      🔍 Buscando "{filters.name}" en TCGPlayer...
+                      🔍 Buscando &quot;{filters.name}&quot; en TCGPlayer...
                     </p>
                     <p className="text-xs text-blue-600 mt-0.5">
                       Obteniendo precios actualizados del mercado
@@ -296,7 +316,7 @@ function CardsPageContent() {
                 <p className="text-red-600 mb-4 font-medium">Error al cargar las cartas</p>
                 <p className="text-sm text-red-500 mb-4">{error}</p>
                 <button
-                  onClick={() => dispatch(fetchCards({ filters }) as any)}
+                  onClick={() => dispatch(fetchCards({ filters }))}
                   className="btn btn-primary"
                 >
                   Reintentar
