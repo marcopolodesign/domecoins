@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { 
   ShoppingCartIcon
 } from '@heroicons/react/24/outline'
-import { addToCart } from '@/store/cartSlice'
+import { addToCart, openCart } from '@/store/cartSlice'
 import { RootState } from '@/store'
 import toast from 'react-hot-toast'
 
@@ -87,6 +87,9 @@ export default function ProductCard({
         priceUsd: usdPrice,
         priceArs: arsPrice!,
       }))
+      
+      // Auto-open the cart after adding item
+      dispatch(openCart())
       
       toast.success(`${card.name} agregado al carrito`)
     } catch {
