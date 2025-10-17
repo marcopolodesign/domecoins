@@ -307,18 +307,26 @@ export async function searchTCGPlayerPrices(
         }
       }
       
-      // Calculate market price (average) for each printing
+      // Use product.marketPrice from TCGPlayer API (don't calculate average)
       // TODO: Stock status should be determined by CSV inventory lookup
       // For now, all variants are marked as "false" (Por Encargo) until CSV integration
-      for (const [printing, data] of printingMap.entries()) {
-        const marketPrice = data.prices.reduce((sum, p) => sum + p, 0) / data.prices.length;
+      const printingEntries = Array.from(printingMap.entries());
+      
+      for (let i = 0; i < printingEntries.length; i++) {
+        const [printing, data] = printingEntries[i];
         const lowestPrice = Math.min(...data.prices);
+        
+        // Use the product's marketPrice for the first/primary printing
+        // For other printings, use the lowest Near Mint listing price
+        const marketPrice = i === 0 && product.marketPrice 
+          ? product.marketPrice 
+          : lowestPrice;
         
         variants.push({
           productId: data.productId,
           printing,
-          marketPrice, // Average price across all Near Mint listings
-          lowestPrice, // Lowest price for this printing
+          marketPrice, // Use TCGPlayer's marketPrice for primary variant
+          lowestPrice,
           inStock: false, // TODO: Check against CSV inventory (productId + printing)
           condition: 'Near Mint',
         });
@@ -587,18 +595,26 @@ export async function fetchProductDetails(productId: number): Promise<TCGPlayerP
       }
     }
     
-    // Calculate market price (average) for each printing
+    // Use product.marketPrice from TCGPlayer API (don't calculate average)
     // TODO: Stock status should be determined by CSV inventory lookup
     // For now, all variants are marked as "false" (Por Encargo) until CSV integration
-    for (const [printing, data] of printingMap.entries()) {
-      const marketPrice = data.prices.reduce((sum, p) => sum + p, 0) / data.prices.length;
+    const printingEntries = Array.from(printingMap.entries());
+    
+    for (let i = 0; i < printingEntries.length; i++) {
+      const [printing, data] = printingEntries[i];
       const lowestPrice = Math.min(...data.prices);
+      
+      // Use the product's marketPrice for the first/primary printing
+      // For other printings, use the lowest Near Mint listing price
+      const marketPrice = i === 0 && product.marketPrice 
+        ? product.marketPrice 
+        : lowestPrice;
       
       variants.push({
         productId: data.productId,
         printing,
-        marketPrice, // Average price across all Near Mint listings
-        lowestPrice, // Lowest price for this printing
+        marketPrice, // Use TCGPlayer's marketPrice for primary variant
+        lowestPrice,
         inStock: false, // TODO: Check against CSV inventory (productId + printing)
         condition: 'Near Mint',
       });
