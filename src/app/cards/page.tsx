@@ -7,7 +7,7 @@ import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import ProductCard from '@/components/ProductCard'
 import { RootState, AppDispatch } from '@/store'
-import { fetchCards, setFilters, setPage } from '@/store/productsSlice'
+import { fetchCards, setFilters, setPage, setInStockCards } from '@/store/productsSlice'
 import { fetchExchangeRate } from '@/store/currencySlice'
 
 
@@ -45,24 +45,73 @@ function CardsPageContent() {
     const rarityFilter = searchParams.get('rarity')
     const inStockParam = searchParams.get('inStock')
 
-    const newFilters: Record<string, string> = {}
+    const fetchInStockCards = async () => {
+      // If inStock=true, fetch from inventory and load only those cards
+      if (inStockParam === 'true') {
+        console.log('[CardsPage] Fetching in-stock cards from inventory...')
+        
+        try {
+          const inventoryResponse = await fetch('/api/inventory')
+          if (inventoryResponse.ok) {
+            const inventoryData = await inventoryResponse.json()
+            const inventory = inventoryData.inventory || {}
+            
+            // Get all productIds with ANY variant in stock
+            const inStockIds = Object.keys(inventory)
+              .filter(productId => {
+                const variants = inventory[productId]
+                return Object.values(variants).some((qty: any) => qty > 0)
+              })
+            
+            console.log(`[CardsPage] Found ${inStockIds.length} products in stock`)
+            
+            if (inStockIds.length > 0) {
+              // Fetch cards by specific IDs from TCGPlayer
+              const response = await fetch('/api/search-with-prices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  productIds: inStockIds,
+                  pageSize: 50 
+                })
+              })
+              
+              if (response.ok) {
+                const data = await response.json()
+                console.log(`[CardsPage] Loaded ${data.results?.length || 0} in-stock cards from TCGPlayer`)
+                
+                // Manually set cards in Redux (bypass normal filters)
+                dispatch(setInStockCards(data.results || []))
+                return
+              }
+            }
+          }
+        } catch (error) {
+          console.error('[CardsPage] Error fetching in-stock cards:', error)
+        }
+        
+        // Fallback: no inventory or error
+        dispatch(setFilters({ name: '' }))
+        return
+      }
+      
+      // Normal search flow
+      const newFilters: Record<string, string> = {}
+      newFilters.name = searchQuery || 'pokemon'
+      if (rarityFilter) newFilters.rarity = rarityFilter
+      
+      dispatch(setFilters(newFilters))
+    }
     
-    // Set default search if no query provided
-    // If inStock=true, show all cards (TODO: filter by CSV inventory)
-    newFilters.name = searchQuery || (inStockParam === 'true' ? 'pokemon' : 'pokemon')
-    if (rarityFilter) newFilters.rarity = rarityFilter
-    
-    // TODO: When CSV inventory is available, filter cards by inStock status
-
-    dispatch(setFilters(newFilters))
+    fetchInStockCards()
   }, [searchParams, dispatch])
 
   // Fetch data when filters change (prevents double call)
   useEffect(() => {
-    if (filters.name) {
+    if (filters.name && searchParams.get('inStock') !== 'true') {
       dispatch(fetchCards({ filters }))
     }
-  }, [dispatch, filters])
+  }, [dispatch, filters, searchParams])
 
   const handlePageChange = useCallback((page: number) => {
     // Scroll to top smoothly when changing pages

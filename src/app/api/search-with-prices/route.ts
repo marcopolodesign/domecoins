@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { searchTCGPlayerPrices } from '@/lib/tcgplayer-price-scraper';
+import { searchTCGPlayerPrices, fetchProductDetails } from '@/lib/tcgplayer-price-scraper';
 import { getInventory } from '@/lib/kv';
 import { calculateFinalPrice } from '@/utils/priceFormulas';
 
@@ -8,6 +8,77 @@ import { calculateFinalPrice } from '@/utils/priceFormulas';
  * 
  * Uses TCGPlayer's API directly for real-time card data and pricing
  */
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { productIds, pageSize = 50 } = body;
+    
+    if (!productIds || !Array.isArray(productIds)) {
+      return NextResponse.json(
+        { error: 'productIds array is required' },
+        { status: 400 }
+      );
+    }
+    
+    console.log(`[SearchWithPrices POST] Fetching ${productIds.length} specific products`);
+    
+    // Fetch each product by ID
+    const productPromises = productIds.map(id => fetchProductDetails(parseInt(id, 10)));
+    const products = await Promise.all(productPromises);
+    
+    // Filter out null results and enrich with pricing
+    const enrichedCards = products
+      .filter(Boolean)
+      .map(product => {
+        const rarity = product!.rarity || 'Unknown';
+        const marketPrice = product!.marketPrice || 0;
+        const finalRetailPrice = calculateFinalPrice(rarity, marketPrice);
+        
+        return {
+          id: `tcg-${product!.productId}`,
+          productId: product!.productId,
+          name: product!.productName,
+          images: {
+            small: product!.imageUrl,
+            large: product!.imageUrl,
+          },
+          set: {
+            name: product!.setName,
+            id: product!.setId?.toString() || '',
+          },
+          number: product!.cardNumber || '',
+          rarity: product!.rarity || 'Unknown',
+          pricing: {
+            marketPrice: product!.marketPrice,
+            retailPrice: finalRetailPrice,
+            lowPrice: product!.lowestPrice,
+          },
+          inStock: false, // Will be updated by inventory check
+          hp: product!.hp || '',
+          attacks: product!.attacks || [],
+          types: product!.energyType || [],
+          offers: [`$${finalRetailPrice.toFixed(2)}`],
+        };
+      });
+    
+    console.log(`[SearchWithPrices POST] Returning ${enrichedCards.length} cards`);
+    
+    return NextResponse.json({
+      results: enrichedCards,
+      totalResults: enrichedCards.length,
+      page: 1,
+      pageSize: enrichedCards.length,
+    });
+    
+  } catch (error: any) {
+    console.error('[SearchWithPrices POST] Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch products', details: error.message },
+      { status: 500 }
+    );
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {

@@ -291,6 +291,18 @@ const productsSlice = createSlice({
     setAPIProvider: (state, action: PayloadAction<string>) => {
       state.currentAPI = action.payload;
     },
+    
+    setInStockCards: (state, action: PayloadAction<Card[]>) => {
+      state.cards = action.payload;
+      state.loading = false;
+      state.error = null;
+      state.pagination = {
+        page: 1,
+        pageSize: action.payload.length,
+        totalCount: action.payload.length,
+        count: action.payload.length,
+      };
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -351,5 +363,5 @@ const productsSlice = createSlice({
   },
 });
 
-export const { setFilters, clearFilters, setPage, setPageSize, setAPIProvider } = productsSlice.actions;
+export const { setFilters, clearFilters, setPage, setPageSize, setAPIProvider, setInStockCards } = productsSlice.actions;
 export default productsSlice.reducer;
