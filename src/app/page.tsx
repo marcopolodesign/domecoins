@@ -324,11 +324,11 @@ export default function HomePage() {
       </section>
 
        {/* Reusable Cards Section - In Stock Cards */}
-       {/* TODO: Replace cardIds with CSV inventory data (random 6 cards in stock) */}
        <ReusableCardsBlock 
         title="Cartas en stock"
         subtitle="Disponibles para entrega inmediata"
-        cardIds={[478058, 250314, 250300, 250317, 250303, 250305]} // TODO: Fetch from CSV
+        useInventory={true}
+        randomCount={6}
         showRefreshButton={false}
         showFloatingButton={true}
         floatingButtonText="Ver Todas las Cartas en Stock"

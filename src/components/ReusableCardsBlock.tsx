@@ -29,6 +29,7 @@ interface ReusableCardsBlockProps {
   showFloatingButton?: boolean;
   floatingButtonText?: string;
   floatingButtonHref?: string;
+  useInventory?: boolean; // NEW: Fetch from inventory instead of cardIds
 }
 
 export default function ReusableCardsBlock({ 
@@ -40,19 +41,67 @@ export default function ReusableCardsBlock({
   showRefreshButton = false,
   showFloatingButton = false,
   floatingButtonText = "Ver Todas las Cartas",
-  floatingButtonHref = "/cards"
+  floatingButtonHref = "/cards",
+  useInventory = false
 }: ReusableCardsBlockProps) {
   const [featuredCards, setFeaturedCards] = useState<TCGPlayerCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Fetch featured cards from local JSON data
+  // Fetch featured cards from local JSON data OR inventory
   useEffect(() => {
     const fetchFeaturedCards = async () => {
       try {
         setLoading(true);
         
-        // Fetch from local JSON file
+        // NEW: If useInventory=true, fetch from inventory API
+        if (useInventory) {
+          console.log('[ReusableCardsBlock] Fetching from inventory...');
+          const inventoryResponse = await fetch('/api/inventory');
+          
+          if (inventoryResponse.ok) {
+            const inventoryData = await inventoryResponse.json();
+            const inStockIds = Object.keys(inventoryData.inventory || {})
+              .filter(id => inventoryData.inventory[id] > 0)
+              .map(id => parseInt(id, 10));
+            
+            console.log(`[ReusableCardsBlock] Found ${inStockIds.length} items in stock`);
+            
+            if (inStockIds.length > 0) {
+              // Shuffle and select random cards
+              const shuffled = [...inStockIds].sort(() => 0.5 - Math.random());
+              const selectedIds = shuffled.slice(0, Math.min(randomCount, inStockIds.length));
+              
+              console.log(`[ReusableCardsBlock] Selected random IDs:`, selectedIds);
+              
+              // Fetch card details for these IDs
+              const cardPromises = selectedIds.map(id => 
+                fetch(`/api/cards/${id}`).then(r => r.ok ? r.json() : null)
+              );
+              
+              const cardDetails = await Promise.all(cardPromises);
+              const validCards = cardDetails.filter(Boolean).map((card: any) => ({
+                productId: card.productId,
+                productName: card.productName,
+                marketPrice: card.marketPrice || 0,
+                lowestPrice: card.lowestPrice || 0,
+                setName: card.setName || 'Unknown Set',
+                rarityName: card.rarity || 'Unknown',
+                customAttributes: { 
+                  cardType: card.customAttributes?.cardType || [],
+                  energyType: card.energyType || []
+                }
+              }));
+              
+              console.log(`[ReusableCardsBlock] Loaded ${validCards.length} cards from inventory`);
+              setFeaturedCards(validCards);
+              setLoading(false);
+              return;
+            }
+          }
+        }
+        
+        // FALLBACK: Fetch from local JSON file
         const response = await fetch('/data/tcgplayer-featured-cards.json');
         
         if (response.ok) {
@@ -149,7 +198,7 @@ export default function ReusableCardsBlock({
 
     fetchFeaturedCards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey]);
+  }, [refreshKey, useInventory, randomCount]);
 
   // Function to refresh cards with new random selection
   const refreshCards = () => {
