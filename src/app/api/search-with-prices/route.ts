@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
       
       return {
         id: `tcg-${priceData.productId}`,
+        productId: priceData.productId, // Add numeric productId for navigation
         name: priceData.productName,
         detailUrl: priceData.url || `https://www.tcgplayer.com/product/${priceData.productId}`,
         imageUrl: priceData.imageUrl || '/placeholder-card.svg',
@@ -80,6 +81,9 @@ export async function GET(request: NextRequest) {
         // Stock information
         stock,
         inStock,
+        // Printing information
+        printing: priceData.printing,
+        variants: priceData.variants,
         // Enhanced pricing data
         pricing: {
           marketPrice: priceData.marketPrice,

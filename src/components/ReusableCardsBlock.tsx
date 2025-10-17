@@ -214,6 +214,7 @@ export default function ReusableCardsBlock({
                   </div>
                 </div>
               </div>
+               
             ))
           ) : (
             featuredCards.map((card) => (
@@ -222,7 +223,7 @@ export default function ReusableCardsBlock({
                 card={{
                   id: `tcg-${card.productId}`,
                   name: card.productName,
-                  imageUrl: `https://product-images.tcgplayer.com/fit-in/437x437/${card.productId}.jpg`,
+                  imageUrl: `https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_400x400.jpg`,
                   categoryName: card.setName,
                   rarity: card.rarityName,
                   setId: card.productId.toString(),

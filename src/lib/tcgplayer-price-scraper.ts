@@ -32,6 +32,8 @@ export interface TCGPlayerPrice {
   hp?: string;
   attacks?: string[];
   energyType?: string[];
+  printing?: string; // e.g., "Holofoil", "Reverse Holofoil", "Normal"
+  variants?: TCGPlayerVariant[]; // All available printings/versions
   customAttributes?: {
     rarityDbName?: string;
     number?: string;
@@ -48,6 +50,15 @@ export interface TCGPlayerPrice {
     weakness?: string;
     flavorText?: string;
   };
+}
+
+export interface TCGPlayerVariant {
+  productId: number;
+  printing: string; // "Holofoil", "Reverse Holofoil", "Normal", etc.
+  marketPrice?: number;
+  lowestPrice?: number;
+  inStock: boolean;
+  condition?: string; // "Near Mint", "Lightly Played", etc.
 }
 
 export interface TCGPlayerSearchResult {
@@ -231,13 +242,102 @@ export async function searchTCGPlayerPrices(
                      product.rarity || 
                      undefined;
       
+      // Extract printing variants from listings
+      // We need to get the MARKET PRICE for each unique printing type
+      // 
+      // TODO: TCGPlayer API only returns printings that have active listings.
+      // In the future, we should cross-reference with our CSV inventory to show
+      // ALL possible printings for this card (Holofoil, Reverse Holofoil, etc.)
+      // even if TCGPlayer doesn't have stock. We would then show "Sin Stock" for
+      // printings that aren't available.
+      //
+      const variants: TCGPlayerVariant[] = [];
+      const printingMap = new Map<string, { 
+        prices: number[]; 
+        productId: number;
+        quantities: number[];
+      }>();
+      
+      if (product.listings && Array.isArray(product.listings)) {
+        // First pass: identify ALL unique printings (any condition)
+        const allPrintings = new Set<string>();
+        for (const listing of product.listings) {
+          const printing = listing.printing || 'Normal';
+          allPrintings.add(printing);
+        }
+        
+        // Second pass: collect Near Mint prices for each printing
+        for (const listing of product.listings) {
+          const printing = listing.printing || 'Normal';
+          const condition = listing.condition || 'Near Mint';
+          
+          // Only process Near Mint condition for pricing
+          if (condition === 'Near Mint' && listing.price) {
+            const existing = printingMap.get(printing);
+            
+            if (!existing) {
+              printingMap.set(printing, {
+                prices: [listing.price],
+                productId: listing.productId || product.productId,
+                quantities: [listing.quantity || 0],
+              });
+            } else {
+              existing.prices.push(listing.price);
+              existing.quantities.push(listing.quantity || 0);
+            }
+          }
+        }
+        
+        // Third pass: add printings without Near Mint listings
+        for (const printing of allPrintings) {
+          if (!printingMap.has(printing)) {
+            // Use lowest available price for this printing (any condition)
+            const printingListings = product.listings.filter((l: any) => 
+              (l.printing || 'Normal') === printing && l.price
+            );
+            if (printingListings.length > 0) {
+              const lowestPrice = Math.min(...printingListings.map((l: any) => l.price));
+              printingMap.set(printing, {
+                prices: [lowestPrice],
+                productId: printingListings[0].productId || product.productId,
+                quantities: [0], // No Near Mint stock
+              });
+            }
+          }
+        }
+      }
+      
+      // Calculate market price (average) for each printing
+      // TODO: Stock status should be determined by CSV inventory lookup
+      // For now, all variants are marked as "false" (Por Encargo) until CSV integration
+      for (const [printing, data] of printingMap.entries()) {
+        const marketPrice = data.prices.reduce((sum, p) => sum + p, 0) / data.prices.length;
+        const lowestPrice = Math.min(...data.prices);
+        
+        variants.push({
+          productId: data.productId,
+          printing,
+          marketPrice, // Average price across all Near Mint listings
+          lowestPrice, // Lowest price for this printing
+          inStock: false, // TODO: Check against CSV inventory (productId + printing)
+          condition: 'Near Mint',
+        });
+      }
+      
+      // Sort variants by printing name for consistency
+      variants.sort((a, b) => a.printing.localeCompare(b.printing));
+      
+      // Extract the primary printing (most common or first one)
+      const primaryPrinting = variants.length > 0 ? variants[0].printing : undefined;
+      
       // Debug log for first product to check structure
       if (products.indexOf(product) === 0) {
-        console.log('[TCGPlayer] First product rarity extraction:', {
+        console.log('[TCGPlayer] First product extraction:', {
           productName: product.productName,
           rarityName: product.rarityName,
-          rarityDbName: product.customAttributes?.rarityDbName,
           extractedRarity: rarity,
+          printings: variants.map(v => v.printing).join(', '),
+          variantCount: variants.length,
           SUCCESS: !!rarity
         });
       }
@@ -252,7 +352,7 @@ export async function searchTCGPlayerPrices(
         lowestPriceWithShipping: product.lowestPriceWithShipping,
         medianPrice: product.medianPrice,
         url: `https://www.tcgplayer.com/product/${product.productId}/${encodeURIComponent(product.productUrlName || product.productName)}`,
-        imageUrl: `https://product-images.tcgplayer.com/fit-in/437x437/${product.productId}.jpg`,
+        imageUrl: `https://tcgplayer-cdn.tcgplayer.com/product/${product.productId}_in_400x400.jpg`,
         inStock: (product.totalListings || 0) > 0,
         totalListings: product.totalListings || 0,
         rarity,
@@ -260,6 +360,8 @@ export async function searchTCGPlayerPrices(
         hp: product.customAttributes?.hp,
         attacks,
         energyType: product.customAttributes?.energyType,
+        printing: primaryPrinting, // Add primary printing type
+        variants, // Add all printing variants
         customAttributes: product.customAttributes, // Include full customAttributes for additional data
       };
     });
@@ -339,6 +441,208 @@ export async function searchTCGPlayerPrices(
   }
 }
 
+
+/**
+ * Fetch detailed product information including all variants (printings)
+ * 
+ * This uses TCGPlayer's search API with a filter for the specific product ID.
+ * The search API already includes listings with printing information!
+ * 
+ * @param productId - The TCGPlayer product ID
+ * @returns Product details with all printing variants extracted from listings
+ */
+export async function fetchProductDetails(productId: number): Promise<TCGPlayerPrice | null> {
+  try {
+    console.log(`[TCGPlayer] Fetching product details for ID: ${productId}`);
+    
+    // Use TCGPlayer's search API with product ID filter
+    const url = 'https://mp-search-api.tcgplayer.com/v1/search/request';
+    
+    const params = {
+      q: '', // Empty query
+      isList: 'false',
+      mpfev: '4345',
+    };
+    
+    // Search for this specific product by ID
+    const payload = {
+      algorithm: 'salesrel',
+      from: 0,
+      size: 1,
+      filters: {
+        term: {
+          productLineName: ['Pokemon'],
+          productId: [productId] // Filter by specific product ID
+        }
+      },
+      listingSearch: {
+        context: {
+          cart: {}
+        }
+      },
+      context: {
+        cart: {}
+      },
+      sort: {}
+    };
+    
+    console.log(`[TCGPlayer] Searching for product ID: ${productId}`);
+    
+    const response = await axios.post(url, payload, {
+      params,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Referer': 'https://www.tcgplayer.com/',
+        'Origin': 'https://www.tcgplayer.com',
+      },
+      timeout: 15000,
+    });
+    
+    const data = response.data;
+    
+    if (!data.results || data.results.length === 0 || !data.results[0].results || data.results[0].results.length === 0) {
+      console.error(`[TCGPlayer] No product found with ID: ${productId}`);
+      return null;
+    }
+    
+    const product = data.results[0].results[0];
+    console.log(`[TCGPlayer] Found product: ${product.productName}`);
+    
+    // Extract attacks
+    const attacks: string[] = [];
+    if (product.customAttributes) {
+      ['attack1', 'attack2', 'attack3', 'attack4'].forEach(key => {
+        if (product.customAttributes[key]) {
+          attacks.push(product.customAttributes[key]);
+        }
+      });
+    }
+    
+    // Extract printing variants from listings
+    // Calculate MARKET PRICE (average) for each unique printing type
+    // 
+    // TODO: TCGPlayer API only returns printings that have active listings.
+    // In the future, we should cross-reference with our CSV inventory to show
+    // ALL possible printings for this card (Holofoil, Reverse Holofoil, etc.)
+    // even if TCGPlayer doesn't have stock. We would then show "Sin Stock" for
+    // printings that aren't available.
+    //
+    const variants: TCGPlayerVariant[] = [];
+    const printingMap = new Map<string, { 
+      prices: number[]; 
+      productId: number;
+      quantities: number[];
+    }>();
+    
+    if (product.listings && Array.isArray(product.listings)) {
+      console.log(`[TCGPlayer] Found ${product.listings.length} listings`);
+      
+      // First pass: identify ALL unique printings (any condition)
+      const allPrintings = new Set<string>();
+      for (const listing of product.listings) {
+        const printing = listing.printing || 'Normal';
+        allPrintings.add(printing);
+      }
+      
+      // Second pass: collect Near Mint prices for each printing
+      for (const listing of product.listings) {
+        const printing = listing.printing || 'Normal';
+        const condition = listing.condition || 'Near Mint';
+        
+        // Only process Near Mint condition for pricing
+        if (condition === 'Near Mint' && listing.price) {
+          const existing = printingMap.get(printing);
+          
+          if (!existing) {
+            printingMap.set(printing, {
+              prices: [listing.price],
+              productId: listing.productId || product.productId,
+              quantities: [listing.quantity || 0],
+            });
+          } else {
+            existing.prices.push(listing.price);
+            existing.quantities.push(listing.quantity || 0);
+          }
+        }
+      }
+      
+      // Third pass: add printings without Near Mint listings
+      for (const printing of allPrintings) {
+        if (!printingMap.has(printing)) {
+          // Use lowest available price for this printing (any condition)
+          const printingListings = product.listings.filter((l: any) => 
+            (l.printing || 'Normal') === printing && l.price
+          );
+          if (printingListings.length > 0) {
+            const lowestPrice = Math.min(...printingListings.map((l: any) => l.price));
+            printingMap.set(printing, {
+              prices: [lowestPrice],
+              productId: printingListings[0].productId || product.productId,
+              quantities: [0], // No Near Mint stock
+            });
+          }
+        }
+      }
+    }
+    
+    // Calculate market price (average) for each printing
+    // TODO: Stock status should be determined by CSV inventory lookup
+    // For now, all variants are marked as "false" (Por Encargo) until CSV integration
+    for (const [printing, data] of printingMap.entries()) {
+      const marketPrice = data.prices.reduce((sum, p) => sum + p, 0) / data.prices.length;
+      const lowestPrice = Math.min(...data.prices);
+      
+      variants.push({
+        productId: data.productId,
+        printing,
+        marketPrice, // Average price across all Near Mint listings
+        lowestPrice, // Lowest price for this printing
+        inStock: false, // TODO: Check against CSV inventory (productId + printing)
+        condition: 'Near Mint',
+      });
+    }
+    
+    // Sort variants by printing name for consistency
+    variants.sort((a, b) => a.printing.localeCompare(b.printing));
+    
+    console.log(`[TCGPlayer] Extracted ${variants.length} unique printings with market prices:`, 
+      variants.map(v => `${v.printing}: $${v.marketPrice?.toFixed(2)}`).join(', '));
+    
+    const rarity = product.rarityName || product.customAttributes?.rarityDbName;
+    
+    return {
+      productId: product.productId,
+      productName: product.productName,
+      setName: product.setName,
+      setId: product.setId,
+      marketPrice: product.marketPrice,
+      lowestPrice: product.lowestPrice,
+      lowestPriceWithShipping: product.lowestPriceWithShipping,
+      medianPrice: product.medianPrice,
+      url: `https://www.tcgplayer.com/product/${product.productId}/${encodeURIComponent(product.productUrlName || product.productName)}`,
+      imageUrl: `https://tcgplayer-cdn.tcgplayer.com/product/${product.productId}_in_400x400.jpg`,
+      inStock: (product.totalListings || 0) > 0,
+      totalListings: product.totalListings || 0,
+      rarity,
+      cardNumber: product.customAttributes?.number,
+      hp: product.customAttributes?.hp,
+      attacks,
+      energyType: product.customAttributes?.energyType,
+      printing: variants.length > 0 ? variants[0].printing : undefined,
+      variants,
+      customAttributes: product.customAttributes,
+    };
+    
+  } catch (error: any) {
+    console.error(`[TCGPlayer] Error fetching product details for ${productId}:`, error.message);
+    if (error.response) {
+      console.error('[TCGPlayer] Response status:', error.response.status);
+    }
+    return null;
+  }
+}
 
 /**
  * Batch search for multiple cards with rate limiting

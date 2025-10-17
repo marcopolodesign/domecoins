@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { useDispatch, useSelector } from 'react-redux'
+import { useRouter } from 'next/navigation'
 
 import { 
   ShoppingCartIcon
@@ -29,6 +30,7 @@ export default function ProductCard({
   style
 }: ProductCardProps) {
   const dispatch = useDispatch()
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   
   const dolarBlueRate = useSelector((state: RootState) => state.currency.dolarBlueRate)
@@ -73,7 +75,9 @@ export default function ProductCard({
     });
   }
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click navigation
+    
     if (!usdPrice) {
       toast.error('Precio no disponible para esta carta')
       return
@@ -99,6 +103,15 @@ export default function ProductCard({
       setIsLoading(false)
     }
   }
+  
+  const handleCardClick = () => {
+    // Extract productId - try different possible fields
+    const productId = card.productId || card.id;
+    
+    if (productId) {
+      router.push(`/cards/${productId}`);
+    }
+  }
 
 
   // Get image URL
@@ -107,7 +120,8 @@ export default function ProductCard({
 
   return (
     <div 
-      className={`group ${backgroundColor} overflow-hidden transition-all duration-300 flex flex-col p-4 border border-transparent hover:border-blue-500 rounded-lg w-full max-w-sm ${className}`}
+      onClick={handleCardClick}
+      className={`group ${backgroundColor} overflow-hidden transition-all duration-300 flex flex-col p-4 border border-transparent hover:border-blue-500 rounded-lg w-full max-w-sm cursor-pointer ${className}`}
       style={style}
     >
       {/* Top section with image and details */}
@@ -153,11 +167,12 @@ export default function ProductCard({
               {card.name}
             </h3>
 
-            {/* Rarity and Set info */}
+            {/* Rarity, Printing, and Set info */}
             <div className="flex items-center gap-3">
               {card.rarity && (
                 <span className="text-sm text-gray-600">
-                  {card.rarity}, #{card.setId || 'N/A'}
+                  {card.rarity}
+                  {card.printing && ` • ${card.printing}`}, #{card.setId || 'N/A'}
                 </span>
               )}
             </div>
@@ -203,7 +218,8 @@ export default function ProductCard({
       </div>
 
       {/* Full-width Add to cart button at bottom */}
-      {showAddToCart && usdPrice && (
+      {/* TODO: Re-enable when inventory system is ready */}
+      {false && showAddToCart && usdPrice && (
         <div className="border-t border-gray-100 rounded-bl-lg rounded-br-lg -mx-4 -mb-4">
           <button
             onClick={handleAddToCart}

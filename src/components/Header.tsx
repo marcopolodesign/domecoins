@@ -30,23 +30,20 @@ const navigation = [
 ]
 
 // Custom Pokedex/Card icon with badge
-function PokedexIcon({ count, className }: { count: number; className?: string }) {
+function PokedexIcon({ count, currentColor }: { count: number; currentColor: string }) {
   return (
-    <div className="relative">
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="1.5"
-        className={className}
-      >
-        <rect x="3" y="3" width="18" height="18" rx="2" />
-        <rect x="7" y="7" width="10" height="6" rx="1" />
-        <circle cx="12" cy="17" r="1.5" fill="currentColor" />
+    <div className="relative mr-3">
+        <svg width="25" height="36" viewBox="0 0 25 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0.75" y="0.75" width="22.9001" height="33.8664" rx="2.25" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="6.65021" cy="6.64297" r="2.68036" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="18.7425" cy="4.62003" r="1.40741" fill="currentColor"/>
+      <path d="M0.612061 14.3959C2.71727 14.3959 7.43979 14.3959 9.48816 14.3959C12.0486 14.3959 12.4754 8.84828 16.2306 8.84828C19.2349 8.84828 22.6032 8.84828 23.9119 8.84828" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M2.83105 21.8211L4.32471 23.3147L2.83105 24.8083" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M7.55676 30.866H16.8433" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
+
       {count > 0 && (
-        <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+        <span className="absolute -top-1 -right-3 bg-blue-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
           {count > 9 ? '9+' : count}
         </span>
       )}
@@ -182,16 +179,16 @@ export default function Header() {
                 {/* Logo */}
                 <div className="flex items-center">
                   <Link href="/" className="flex items-center space-x-3">
-                    <div className="h-10 w-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                    <div className="h-10 w-10 border-2 border-[`${logoTextColor}`] rounded-full flex items-center justify-center">
                       <svg 
                         xmlns="http://www.w3.org/2000/svg" 
                         viewBox="0 0 24 24" 
-                        fill="white"
-                        className="h-6 w-6"
+                        fill="none"
+                        className={`h-6 w-6 ${logoTextColor} ${hoverColor}`}
                       >
-                        <circle cx="12" cy="12" r="10" fill="none" stroke="white" strokeWidth="2"/>
-                        <circle cx="12" cy="12" r="4" fill="white"/>
-                        <line x1="12" y1="2" x2="12" y2="22" stroke="white" strokeWidth="2"/>
+                        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2"/>
+                        <circle cx="12" cy="12" r="4" className={logoTextColor} fill="currentColor "/>
+                        <line x1="12" y1="2" x2="12" y2="22" stroke="currentColor" strokeWidth="2"/>
                       </svg>
                     </div>
                     <div>
@@ -233,16 +230,16 @@ export default function Header() {
                     onClick={handleCartClick}
                     className={`flex items-center space-x-2 ${textColor} ${hoverColor} transition-colors duration-200`}
                   >
-                    <PokedexIcon count={totalItems} className="h-7 w-7" />
+                    <PokedexIcon count={totalItems} currentColor={textColor} />
                     <span className="text-lg font-semibold">
                       ${cartTotal.ars.toFixed(2)}
                     </span>
                   </button>
 
-                  {/* User icon */}
+                  {/* User icon
                   <button className={`${textColor} ${hoverColor} transition-colors duration-200`}>
                     <UserCircleIcon className="h-8 w-8" />
-                  </button>
+                  </button> */}
 
                   {/* Mobile menu button */}
                   <Disclosure.Button className={`md:hidden inline-flex items-center justify-center p-2 rounded-md ${textColor} hover:opacity-70 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500`}>
