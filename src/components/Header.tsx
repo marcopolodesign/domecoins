@@ -144,7 +144,16 @@ export default function Header() {
           <div className="flex items-center justify-center text-sm">
             <ExclamationTriangleIcon className="h-4 w-4 mr-2 animate-pulse" />
             <span className="font-medium">
-              ¡Nuevas cartas llegando todos los días! Envío gratis en compras superiores a $50.000
+              ¡Compramos tus cartas! Te damos créditos para tu próxima compra. 
+              <a 
+                href="https://wa.me/5491131160311" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="underline hover:text-white/80 transition-colors"
+                onClick={e => e.stopPropagation()}
+              >
+                Consultanos por WhatsApp
+              </a>
             </span>
             <button 
               className="ml-3 text-xs underline hover:no-underline"

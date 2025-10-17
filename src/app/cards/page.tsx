@@ -43,12 +43,16 @@ function CardsPageContent() {
   useEffect(() => {
     const searchQuery = searchParams.get('search')
     const rarityFilter = searchParams.get('rarity')
+    const inStockParam = searchParams.get('inStock')
 
     const newFilters: Record<string, string> = {}
     
     // Set default search if no query provided
-    newFilters.name = searchQuery || 'pokemon'
+    // If inStock=true, show all cards (TODO: filter by CSV inventory)
+    newFilters.name = searchQuery || (inStockParam === 'true' ? 'pokemon' : 'pokemon')
     if (rarityFilter) newFilters.rarity = rarityFilter
+    
+    // TODO: When CSV inventory is available, filter cards by inStock status
 
     dispatch(setFilters(newFilters))
   }, [searchParams, dispatch])
@@ -122,16 +126,27 @@ function CardsPageContent() {
     return filtered
   }, [cards, clientSideFilter, sortOrder])
 
+  // Check if we're filtering by in-stock
+  const inStockParam = searchParams.get('inStock')
+  const showingInStock = inStockParam === 'true'
+
   return (
     <div className="min-h-screen bg-gray-50 mt-32">
       <div className="container-custom py-8 flex flex-col gap-4">
         {/* Page header with search query display */}
         <div>
           <h1 className="text-5xl font-bold text-gray-900 mb-2 font-thunder">
-            {filters.name && filters.name.trim() !== ''
+            {showingInStock
+              ? `Cartas en Stock (${pagination.totalCount})`
+              : filters.name && filters.name.trim() !== ''
               ? `Resultados para ${filters.name} (${pagination.totalCount})`
               : 'Catálogo de Cartas Pokemon'}
           </h1>
+          {showingInStock && (
+            <p className="text-gray-600 font-interphases">
+              Disponibles para entrega inmediata
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-4">

@@ -129,7 +129,7 @@ export default function ProductCard({
       style={style}
     >
       {/* Top section with image and details */}
-      <div className="flex flex-row flex-1 pb-4">
+      <div className="flex flex-row flex-1">
         {/* Card image - Left side (TCG dimensions: 144x201) */}
         <div className="relative w-36 h-50 overflow-hidden bg-gray-100 flex-shrink-0" style={{ width: '144px', height: '201px' }}>
           <Image

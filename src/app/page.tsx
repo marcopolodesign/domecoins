@@ -288,12 +288,11 @@ export default function HomePage() {
                           {/* Card information on hover overlay */}
                           <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                             <div className="text-center text-white p-4">
-                              <h3 className="text-lg font-bold mb-2">{card.productName}</h3>
+                              <h3 className="text-2xl font-bold mb-2">{card.productName}</h3>
                               <div className="space-y-1 text-sm">
                                 <p>{energyType || cardType}</p>
                                 <p>{card.rarityName}</p>
                                 <p>{card.setName}</p>
-                                <p className="text-yellow-400 font-semibold">${card.marketPrice.toFixed(2)}</p>
                               </div>
                             </div>
                           </div>
@@ -324,15 +323,16 @@ export default function HomePage() {
         </div>
       </section>
 
-       {/* Reusable Cards Section */}
+       {/* Reusable Cards Section - In Stock Cards */}
+       {/* TODO: Replace cardIds with CSV inventory data (random 6 cards in stock) */}
        <ReusableCardsBlock 
         title="Cartas en stock"
         subtitle="Disponibles para entrega inmediata"
-        cardIds={[478058, 250314, 250300, 250317, 250303, 250305]}
+        cardIds={[478058, 250314, 250300, 250317, 250303, 250305]} // TODO: Fetch from CSV
         showRefreshButton={false}
         showFloatingButton={true}
-        floatingButtonText="Ver Todas las Cartas"
-        floatingButtonHref="/cards"
+        floatingButtonText="Ver Todas las Cartas en Stock"
+        floatingButtonHref="/cards?inStock=true"
         className="py-16 bg-gradient-to-b from-white to-gray-50"
       />
 
