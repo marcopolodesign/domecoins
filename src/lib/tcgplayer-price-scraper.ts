@@ -460,8 +460,8 @@ export async function searchTCGPlayerPrices(
  * @returns Product details with all printing variants extracted from listings
  */
 /**
- * Fetch Near Mint Comparison Prices from TCGPlayer Price Points API
- * This captures all printing types and their market prices
+ * Fetch Near Mint Comparison Prices from TCGPlayer Price History API
+ * This captures all printing variants with their Near Mint market prices
  * 
  * @param productId - The TCGPlayer product ID
  * @returns Map of printing types to their Near Mint comparison prices
@@ -470,57 +470,57 @@ async function fetchNearMintComparisonPrices(productId: number): Promise<Map<str
   const prices = new Map<string, number>();
   
   try {
-    // Use TCGPlayer's price points API endpoint
-    const apiUrl = `https://mpapi.tcgplayer.com/v2/product/${productId}/pricepoints`;
-    console.log(`[TCGPlayer] Fetching price points from: ${apiUrl}`);
+    // Use TCGPlayer's price history API endpoint
+    // This endpoint returns detailed price data for all variants (Holofoil, Reverse Holofoil, etc.)
+    const apiUrl = `https://infinite-api.tcgplayer.com/price/history/${productId}/detailed?range=quarter`;
+    console.log(`[TCGPlayer] Fetching price history from: ${apiUrl}`);
     
     const response = await fetch(apiUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         'Accept': 'application/json',
+        'Referer': `https://www.tcgplayer.com/product/${productId}`,
+        'Origin': 'https://www.tcgplayer.com',
       },
     });
     
     if (!response.ok) {
-      console.log(`[TCGPlayer] Failed to fetch price points: ${response.status}`);
+      console.log(`[TCGPlayer] Failed to fetch price history: ${response.status}`);
       return prices;
     }
     
-    const pricePoints = await response.json();
+    const priceHistory = await response.json();
     
-    if (!Array.isArray(pricePoints)) {
-      console.log(`[TCGPlayer] Invalid price points response`);
+    if (!priceHistory.result || !Array.isArray(priceHistory.result)) {
+      console.log(`[TCGPlayer] Invalid price history response`);
       return prices;
     }
     
-    console.log(`[TCGPlayer] Found ${pricePoints.length} price points`);
+    console.log(`[TCGPlayer] Found ${priceHistory.result.length} variant price histories`);
     
-    // Map TCGPlayer's printing types to our format
-    const printingTypeMap: Record<string, string> = {
-      'Normal': 'Normal',
-      'Foil': 'Holofoil',
-      'Reverse Foil': 'Reverse Holofoil',
-      'Holo': 'Holofoil',
-      'Reverse Holo': 'Reverse Holofoil',
-    };
-    
-    for (const point of pricePoints) {
-      const printingType = point.printingType || 'Normal';
-      const marketPrice = point.marketPrice || point.listedMedianPrice;
+    // Extract Near Mint prices for each variant
+    for (const item of priceHistory.result) {
+      const variant = item.variant || 'Normal';
+      const condition = item.condition || 'Unknown';
       
-      if (marketPrice && !isNaN(parseFloat(marketPrice.toString()))) {
-        const price = parseFloat(marketPrice.toString());
-        const mappedPrinting = printingTypeMap[printingType] || printingType;
+      // Only process Near Mint condition for comparison prices
+      if (condition === 'Near Mint' && item.buckets && item.buckets.length > 0) {
+        // Get the latest market price (most recent bucket)
+        const latestBucket = item.buckets[0];
+        const marketPrice = latestBucket.marketPrice;
         
-        prices.set(mappedPrinting, price);
-        console.log(`[TCGPlayer] Price point: ${mappedPrinting} = $${price}`);
+        if (marketPrice && !isNaN(parseFloat(marketPrice))) {
+          const price = parseFloat(marketPrice);
+          prices.set(variant, price);
+          console.log(`[TCGPlayer] Price history: ${variant} (${condition}) = $${price}`);
+        }
       }
     }
     
     console.log(`[TCGPlayer] Successfully fetched ${prices.size} Near Mint comparison prices`);
     
   } catch (error) {
-    console.error(`[TCGPlayer] Error fetching price points:`, error);
+    console.error(`[TCGPlayer] Error fetching price history:`, error);
   }
   
   return prices;
