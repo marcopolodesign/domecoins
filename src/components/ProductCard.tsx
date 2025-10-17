@@ -39,7 +39,9 @@ export default function ProductCard({
   const getPrice = () => {
     // Try TCGPlayer pricing first (from search-with-prices API)
     // Use retailPrice (with formula) if available, otherwise use marketPrice
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((card.pricing as any)?.retailPrice) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return (card.pricing as any).retailPrice
     }
     if (card.pricing?.marketPrice) {
