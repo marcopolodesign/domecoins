@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import ProductCard from './ProductCard';
+import { calculateFinalPrice } from '@/utils/priceFormulas';
 
 // Interface for TCGPlayer card data
 interface TCGPlayerCard {
@@ -217,39 +218,46 @@ export default function ReusableCardsBlock({
                
             ))
           ) : (
-            featuredCards.map((card) => (
-              <ProductCard
-                key={card.productId}
-                card={{
-                  id: `tcg-${card.productId}`,
-                  name: card.productName,
-                  imageUrl: `https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_400x400.jpg`,
-                  categoryName: card.setName,
-                  rarity: card.rarityName,
-                  setId: card.productId.toString(),
-                  pricing: {
-                    marketPrice: card.marketPrice,
-                    lowPrice: card.lowestPrice,
-                    source: 'TCGPlayer',
-                    lastUpdated: new Date().toISOString(),
-                  },
-                  inStock: true,
-                  stock: 1,
-                  offers: [`$${card.marketPrice.toFixed(2)}`],
-                  provider: 'TCGPlayer',
-                  detailUrl: `https://www.tcgplayer.com/product/${card.productId}`,
-                  types: card.customAttributes?.energyType || [],
-                  weaknesses: [],
-                  resistances: [],
-                  attacks: [],
-                  hp: null,
-                  nationalPokedexNumbers: [],
-                }}
-                showAddToCart={true}
-                backgroundColor="bg-white"
-                style={{ backgroundColor: '#FAFAFA' }}
-              />
-            ))
+            featuredCards.map((card) => {
+              // Calculate retail price using formula
+              const retailPrice = calculateFinalPrice(card.rarityName, card.marketPrice);
+              
+              return (
+                <ProductCard
+                  key={card.productId}
+                  card={{
+                    id: `tcg-${card.productId}`,
+                    productId: card.productId, // Add numeric productId for navigation
+                    name: card.productName,
+                    imageUrl: `https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_400x400.jpg`,
+                    categoryName: card.setName,
+                    rarity: card.rarityName,
+                    setId: card.productId.toString(),
+                    pricing: {
+                      marketPrice: card.marketPrice,
+                      retailPrice: retailPrice, // Add calculated retail price
+                      lowPrice: card.lowestPrice,
+                      source: 'TCGPlayer',
+                      lastUpdated: new Date().toISOString(),
+                    },
+                    inStock: true,
+                    stock: 1,
+                    offers: [`$${retailPrice.toFixed(2)}`], // Use retail price in offers
+                    provider: 'TCGPlayer',
+                    detailUrl: `https://www.tcgplayer.com/product/${card.productId}`,
+                    types: card.customAttributes?.energyType || [],
+                    weaknesses: [],
+                    resistances: [],
+                    attacks: [],
+                    hp: null,
+                    nationalPokedexNumbers: [],
+                  }}
+                  showAddToCart={true}
+                  backgroundColor="bg-white"
+                  style={{ backgroundColor: '#FAFAFA' }}
+                />
+              );
+            })
           )}
         </div>
         
