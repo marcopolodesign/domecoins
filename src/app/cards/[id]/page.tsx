@@ -7,6 +7,7 @@ import { useAppDispatch, useAppSelector } from '@/store';
 import { addToCart, openCart } from '@/store/cartSlice';
 import { ShoppingCartIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { TCGPlayerPrice, TCGPlayerVariant } from '@/lib/tcgplayer-price-scraper';
+import { getTypeGradient } from '@/utils/pokemonTypeGradients';
 
 export default function CardDetailPage() {
   const params = useParams();
@@ -146,22 +147,39 @@ export default function CardDetailPage() {
         
         {/* Card Details */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Left Column - Image */}
+          {/* Left Column - Image with Gradient Background */}
           <div className="flex justify-center">
-            <div className="relative" style={{ width: '322px', height: '422px' }}>
-              <img
-                src={`https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_400x400.jpg`}
-                srcSet={`
-                  https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_200x200.jpg 200w,
-                  https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_400x400.jpg 400w,
-                  https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_600x600.jpg 600w,
-                  https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_800x800.jpg 800w
-                `}
-                sizes="(max-width: 322px) 100vw, 322px"
-                alt={card.productName}
-                className="rounded-lg shadow-xl object-contain w-full h-full"
-                loading="eager"
+            <div 
+              className="lg:sticky lg:top-24 self-start"
+              style={{ width: '322px', height: '422px' }}
+            >
+              {/* Gradient Background Container */}
+              <div 
+                className="absolute inset-0 rounded-lg opacity-20 blur-xl"
+                style={{ 
+                  background: getTypeGradient(card.energyType),
+                  transform: 'scale(1.1)',
+                  zIndex: 0
+                }}
               />
+              
+              {/* Card Image */}
+              <div className="relative" style={{ width: '322px', height: '422px', zIndex: 1 }}>
+                <img
+                  src={`https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_400x400.jpg`}
+                  srcSet={`
+                    https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_200x200.jpg 200w,
+                    https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_400x400.jpg 400w,
+                    https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_600x600.jpg 600w,
+                    https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_800x800.jpg 800w
+                  `}
+                  sizes="(max-width: 322px) 100vw, 322px"
+                  alt={card.productName}
+                  className="rounded-lg shadow-xl object-contain w-full h-full relative"
+                  loading="eager"
+                  style={{ zIndex: 1 }}
+                />
+              </div>
             </div>
           </div>
           
