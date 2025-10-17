@@ -459,6 +459,73 @@ export async function searchTCGPlayerPrices(
  * @param productId - The TCGPlayer product ID
  * @returns Product details with all printing variants extracted from listings
  */
+/**
+ * Fetch Near Mint Comparison Prices from TCGPlayer Price Points API
+ * This captures all printing types and their market prices
+ * 
+ * @param productId - The TCGPlayer product ID
+ * @returns Map of printing types to their Near Mint comparison prices
+ */
+async function fetchNearMintComparisonPrices(productId: number): Promise<Map<string, number>> {
+  const prices = new Map<string, number>();
+  
+  try {
+    // Use TCGPlayer's price points API endpoint
+    const apiUrl = `https://mpapi.tcgplayer.com/v2/product/${productId}/pricepoints`;
+    console.log(`[TCGPlayer] Fetching price points from: ${apiUrl}`);
+    
+    const response = await fetch(apiUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      console.log(`[TCGPlayer] Failed to fetch price points: ${response.status}`);
+      return prices;
+    }
+    
+    const pricePoints = await response.json();
+    
+    if (!Array.isArray(pricePoints)) {
+      console.log(`[TCGPlayer] Invalid price points response`);
+      return prices;
+    }
+    
+    console.log(`[TCGPlayer] Found ${pricePoints.length} price points`);
+    
+    // Map TCGPlayer's printing types to our format
+    const printingTypeMap: Record<string, string> = {
+      'Normal': 'Normal',
+      'Foil': 'Holofoil',
+      'Reverse Foil': 'Reverse Holofoil',
+      'Holo': 'Holofoil',
+      'Reverse Holo': 'Reverse Holofoil',
+    };
+    
+    for (const point of pricePoints) {
+      const printingType = point.printingType || 'Normal';
+      const marketPrice = point.marketPrice || point.listedMedianPrice;
+      
+      if (marketPrice && !isNaN(parseFloat(marketPrice.toString()))) {
+        const price = parseFloat(marketPrice.toString());
+        const mappedPrinting = printingTypeMap[printingType] || printingType;
+        
+        prices.set(mappedPrinting, price);
+        console.log(`[TCGPlayer] Price point: ${mappedPrinting} = $${price}`);
+      }
+    }
+    
+    console.log(`[TCGPlayer] Successfully fetched ${prices.size} Near Mint comparison prices`);
+    
+  } catch (error) {
+    console.error(`[TCGPlayer] Error fetching price points:`, error);
+  }
+  
+  return prices;
+}
+
 export async function fetchProductDetails(productId: number): Promise<TCGPlayerPrice | null> {
   try {
     console.log(`[TCGPlayer] Fetching product details for ID: ${productId}`);
@@ -623,7 +690,41 @@ export async function fetchProductDetails(productId: number): Promise<TCGPlayerP
     // Sort variants by printing name for consistency
     variants.sort((a, b) => a.printing.localeCompare(b.printing));
     
-    console.log(`[TCGPlayer] Extracted ${variants.length} unique printings with market prices:`, 
+    console.log(`[TCGPlayer] Extracted ${variants.length} unique printings from API listings`);
+    
+    // FALLBACK: Fetch Near Mint Comparison Prices from TCGPlayer's price points API
+    // This captures prices that TCGPlayer shows but aren't in active listings
+    const scrapedPrices = await fetchNearMintComparisonPrices(productId);
+    
+    if (scrapedPrices.size > 0) {
+      // Merge scraped prices with existing variants
+      for (const [printing, scrapedPrice] of scrapedPrices.entries()) {
+        // Check if this printing already exists in variants
+        const existingVariant = variants.find(v => v.printing === printing);
+        
+        if (existingVariant) {
+          // Update existing variant with scraped price if it's the primary one
+          console.log(`[TCGPlayer] Using scraped price for ${printing}: $${scrapedPrice} (was $${existingVariant.marketPrice})`);
+          existingVariant.marketPrice = scrapedPrice;
+        } else {
+          // Add new variant from scraped data
+          console.log(`[TCGPlayer] Adding variant from scraped data: ${printing} = $${scrapedPrice}`);
+          variants.push({
+            productId: productId,
+            printing,
+            marketPrice: scrapedPrice,
+            lowestPrice: scrapedPrice,
+            inStock: false,
+            condition: 'Near Mint',
+          });
+        }
+      }
+      
+      // Re-sort after adding scraped variants
+      variants.sort((a, b) => a.printing.localeCompare(b.printing));
+    }
+    
+    console.log(`[TCGPlayer] Final variants count: ${variants.length}`, 
       variants.map(v => `${v.printing}: $${v.marketPrice?.toFixed(2)}`).join(', '));
     
     const rarity = product.rarityName || product.customAttributes?.rarityDbName;
