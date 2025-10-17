@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchTCGPlayerPrices } from '@/lib/tcgplayer-price-scraper';
 import { getInventory } from '@/lib/kv';
+import { calculateFinalPrice } from '@/utils/priceFormulas';
 
 /**
  * Search API with TCGPlayer Prices
@@ -49,12 +50,19 @@ export async function GET(request: NextRequest) {
       const stock = inventoryMap[priceData.productId.toString()] || 0;
       const inStock = stock > 0;
       
+      // Calculate final retail price using formula
+      const rarity = priceData.rarity || 'Unknown';
+      const marketPrice = priceData.marketPrice || 0;
+      const finalRetailPrice = calculateFinalPrice(rarity, marketPrice);
+      
       // Debug first card to check rarity
       if (index === 0) {
         console.log('[SearchWithPrices] First card rarity check:', {
           productName: priceData.productName,
           rarity: priceData.rarity,
-          hasRarity: !!priceData.rarity
+          hasRarity: !!priceData.rarity,
+          marketPrice,
+          finalRetailPrice,
         });
       }
       
@@ -65,8 +73,8 @@ export async function GET(request: NextRequest) {
         detailUrl: priceData.url || `https://www.tcgplayer.com/product/${priceData.productId}`,
         imageUrl: priceData.imageUrl || '/placeholder-card.svg',
         categoryName: priceData.setName || 'Unknown Set',
-        offers: priceData.marketPrice 
-          ? [`$${priceData.marketPrice.toFixed(2)}`]
+        offers: finalRetailPrice 
+          ? [`$${finalRetailPrice.toFixed(2)}`]
           : ['Price N/A'],
         provider: 'TCGPlayer',
         rarity: priceData.rarity || 'Unknown',
@@ -86,7 +94,8 @@ export async function GET(request: NextRequest) {
         variants: priceData.variants,
         // Enhanced pricing data
         pricing: {
-          marketPrice: priceData.marketPrice,
+          marketPrice: priceData.marketPrice, // Original TCGPlayer price
+          retailPrice: finalRetailPrice, // Our calculated retail price
           lowPrice: priceData.lowestPrice,
           midPrice: priceData.marketPrice, // Use market price as median
           highPrice: priceData.lowestPriceWithShipping || priceData.marketPrice,

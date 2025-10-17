@@ -38,6 +38,10 @@ export default function ProductCard({
   // Extract price - works with both card formats
   const getPrice = () => {
     // Try TCGPlayer pricing first (from search-with-prices API)
+    // Use retailPrice (with formula) if available, otherwise use marketPrice
+    if ((card.pricing as any)?.retailPrice) {
+      return (card.pricing as any).retailPrice
+    }
     if (card.pricing?.marketPrice) {
       return card.pricing.marketPrice
     }

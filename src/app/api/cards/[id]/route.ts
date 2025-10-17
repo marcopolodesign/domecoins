@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchProductDetails } from '@/lib/tcgplayer-price-scraper';
+import { calculateFinalPrice } from '@/utils/priceFormulas';
 
 export async function GET(
   request: NextRequest,
@@ -28,7 +29,30 @@ export async function GET(
       );
     }
     
-    return NextResponse.json(product);
+    // Apply price formulas to each variant
+    if (product.variants && product.variants.length > 0) {
+      product.variants = product.variants.map(variant => {
+        const rarity = product.rarity || 'Unknown';
+        const marketPrice = variant.marketPrice || 0;
+        const retailPrice = calculateFinalPrice(rarity, marketPrice);
+        
+        return {
+          ...variant,
+          retailPrice, // Add calculated retail price
+        };
+      });
+    }
+    
+    // Also calculate main product retail price
+    const mainRetailPrice = calculateFinalPrice(
+      product.rarity || 'Unknown',
+      product.marketPrice || 0
+    );
+    
+    return NextResponse.json({
+      ...product,
+      retailPrice: mainRetailPrice,
+    });
     
   } catch (error) {
     console.error('[API] Error fetching product details:', error);

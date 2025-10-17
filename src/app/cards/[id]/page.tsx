@@ -79,11 +79,11 @@ export default function CardDetailPage() {
     })}`;
   };
   
-  const handleAddToCart = (variant: TCGPlayerVariant) => {
+  const handleAddToCart = (variant: any) => {
     if (!card) return;
     
-    // Always use marketPrice (average price)
-    const price = variant.marketPrice || 0;
+    // Use retailPrice (with formula applied), fallback to marketPrice
+    const price = variant.retailPrice || variant.marketPrice || 0;
     
     dispatch(addToCart({
       card: {
@@ -151,8 +151,8 @@ export default function CardDetailPage() {
   }
   
   const currentVariant = selectedVariant || card.variants?.[0];
-  // Always use marketPrice (average), never lowestPrice
-  const currentPrice = currentVariant?.marketPrice || card.marketPrice || 0;
+  // Use retailPrice (with formula applied), fallback to marketPrice
+  const currentPrice = (currentVariant as any)?.retailPrice || currentVariant?.marketPrice || (card as any).retailPrice || card.marketPrice || 0;
   
   return (
     <div className="min-h-screen bg-white pt-32 pb-16">
@@ -257,8 +257,8 @@ export default function CardDetailPage() {
                 <div className="space-y-3">
                   {card.variants.map((variant, idx) => {
                     const isSelected = selectedVariant?.productId === variant.productId;
-                    // Always show marketPrice
-                    const variantPrice = variant.marketPrice;
+                    // Show retailPrice (with formula applied), fallback to marketPrice
+                    const variantPrice = (variant as any).retailPrice || variant.marketPrice;
                     
                     return (
                       <div
