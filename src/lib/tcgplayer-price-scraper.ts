@@ -692,29 +692,29 @@ export async function fetchProductDetails(productId: number): Promise<TCGPlayerP
     
     console.log(`[TCGPlayer] Extracted ${variants.length} unique printings from API listings`);
     
-    // FALLBACK: Fetch Near Mint Comparison Prices from TCGPlayer's price points API
-    // This captures prices that TCGPlayer shows but aren't in active listings
+    // FALLBACK: Fetch Near Mint Comparison Prices from TCGPlayer's price history API
+    // This captures prices for printing variants that aren't in active listings
     const scrapedPrices = await fetchNearMintComparisonPrices(productId);
     
     if (scrapedPrices.size > 0) {
-      // Merge scraped prices with existing variants
+      // Only ADD new variants that don't exist in listings
+      // DO NOT update marketPrice for existing variants (they use the official API price)
       for (const [printing, scrapedPrice] of scrapedPrices.entries()) {
         // Check if this printing already exists in variants
         const existingVariant = variants.find(v => v.printing === printing);
         
         if (existingVariant) {
-          // Update existing variant with scraped price if it's the primary one
-          console.log(`[TCGPlayer] Using scraped price for ${printing}: $${scrapedPrice} (was $${existingVariant.marketPrice})`);
-          existingVariant.marketPrice = scrapedPrice;
+          // Variant already exists from listings - keep its original marketPrice
+          console.log(`[TCGPlayer] ${printing} already exists with marketPrice $${existingVariant.marketPrice} (from listings API)`);
         } else {
-          // Add new variant from scraped data
-          console.log(`[TCGPlayer] Adding variant from scraped data: ${printing} = $${scrapedPrice}`);
+          // Add NEW variant that wasn't found in active listings
+          console.log(`[TCGPlayer] Adding NEW variant from price history: ${printing} = $${scrapedPrice}`);
           variants.push({
             productId: productId,
             printing,
-            marketPrice: scrapedPrice,
+            marketPrice: scrapedPrice, // Use price history API price for variants without listings
             lowestPrice: scrapedPrice,
-            inStock: false,
+            inStock: false, // No active listings = out of stock
             condition: 'Near Mint',
           });
         }
