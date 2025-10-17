@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAppDispatch, useAppSelector } from '@/store';
@@ -8,6 +8,7 @@ import { addToCart, openCart } from '@/store/cartSlice';
 import { ShoppingCartIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { TCGPlayerPrice, TCGPlayerVariant } from '@/lib/tcgplayer-price-scraper';
 import { getTypeGradient } from '@/utils/pokemonTypeGradients';
+import VanillaTilt from 'vanilla-tilt';
 
 export default function CardDetailPage() {
   const params = useParams();
@@ -18,6 +19,7 @@ export default function CardDetailPage() {
   const [card, setCard] = useState<TCGPlayerPrice | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedVariant, setSelectedVariant] = useState<TCGPlayerVariant | null>(null);
+  const cardImageRef = useRef<HTMLImageElement>(null);
   
   useEffect(() => {
     const fetchCard = async () => {
@@ -47,6 +49,24 @@ export default function CardDetailPage() {
       fetchCard();
     }
   }, [params.id]);
+  
+  // Initialize VanillaTilt on card image
+  useEffect(() => {
+    if (cardImageRef.current && !loading) {
+      VanillaTilt.init(cardImageRef.current, {
+        max: 5,
+        speed: 500,
+        perspective: 2000,
+      });
+      
+      // Cleanup on unmount
+      return () => {
+        if (cardImageRef.current && (cardImageRef.current as any).vanillaTilt) {
+          (cardImageRef.current as any).vanillaTilt.destroy();
+        }
+      };
+    }
+  }, [loading, card]);
   
   const formatPrice = (priceUSD?: number) => {
     if (!priceUSD) return 'N/A';
@@ -88,6 +108,7 @@ export default function CardDetailPage() {
       quantity: 1,
       priceUsd: price,
       priceArs: price * dolarBlueRate,
+      inStock: variant.inStock,
     }));
     
     dispatch(openCart());
@@ -149,16 +170,17 @@ export default function CardDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Left Column - Image with Gradient Background */}
           <div 
-            className="flex justify-center rounded-lg p-8"
+            className="flex justify-center rounded-lg p-8 lg:p-10 h-max"
             style={{ 
               background: getTypeGradient(card.energyType)
             }}
           >
             <div 
               className="lg:sticky lg:top-24 self-start"
-              style={{ width: '322px', height: '422px' }}
+              style={{ width: '290px', height: '422px' }}
             >
               <img
+                ref={cardImageRef}
                 src={`https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_400x400.jpg`}
                 srcSet={`
                   https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_200x200.jpg 200w,
@@ -166,9 +188,9 @@ export default function CardDetailPage() {
                   https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_600x600.jpg 600w,
                   https://tcgplayer-cdn.tcgplayer.com/product/${card.productId}_in_800x800.jpg 800w
                 `}
-                sizes="(max-width: 322px) 100vw, 322px"
+                sizes="(max-width: 290px) 100vw, 290px"
                 alt={card.productName}
-                className="rounded-lg shadow-xl object-contain w-full h-full"
+                className="rounded-lg object-cover w-full h-full"
                 loading="eager"
               />
             </div>
@@ -289,15 +311,7 @@ export default function CardDetailPage() {
                   </div>
                   <button
                     onClick={() => handleAddToCart(currentVariant)}
-                    disabled={!currentVariant.inStock}
-                    className={`
-                      w-full py-4 rounded-lg font-interphases font-bold text-lg
-                      flex items-center justify-center gap-3 transition-all
-                      ${currentVariant.inStock
-                        ? 'bg-blue-600 text-white hover:bg-blue-700'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      }
-                    `}
+                    className="w-full py-4 rounded-lg font-interphases font-bold text-lg flex items-center justify-center gap-3 transition-all bg-blue-600 text-white hover:bg-blue-700"
                   >
                     <ShoppingCartIcon className="w-6 h-6" />
                     Agregar al Carrito
