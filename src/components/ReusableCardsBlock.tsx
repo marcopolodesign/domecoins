@@ -61,11 +61,19 @@ export default function ReusableCardsBlock({
           
           if (inventoryResponse.ok) {
             const inventoryData = await inventoryResponse.json();
-            const inStockIds = Object.keys(inventoryData.inventory || {})
-              .filter(id => inventoryData.inventory[id] > 0)
+            // New format: { "178894": { "Holofoil": 2, "Reverse Holofoil": 1 } }
+            const inventory = inventoryData.inventory || {};
+            
+            // Get all productIds that have ANY variant in stock
+            const inStockIds = Object.keys(inventory)
+              .filter(productId => {
+                const variants = inventory[productId];
+                // Check if any variant has quantity > 0
+                return Object.values(variants).some((qty: any) => qty > 0);
+              })
               .map(id => parseInt(id, 10));
             
-            console.log(`[ReusableCardsBlock] Found ${inStockIds.length} items in stock`);
+            console.log(`[ReusableCardsBlock] Found ${inStockIds.length} products in stock`);
             
             if (inStockIds.length > 0) {
               // Shuffle and select random cards

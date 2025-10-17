@@ -20,6 +20,7 @@ export default function CardDetailPage() {
   const [loading, setLoading] = useState(true);
   const [selectedVariant, setSelectedVariant] = useState<TCGPlayerVariant | null>(null);
   const [isInfoExpanded, setIsInfoExpanded] = useState(false);
+  const [inventoryStock, setInventoryStock] = useState<Record<string, number>>({});
   const cardImageRef = useRef<HTMLImageElement>(null);
   
   useEffect(() => {
@@ -34,6 +35,28 @@ export default function CardDetailPage() {
         
         const data = await response.json();
         setCard(data);
+        
+        // Fetch inventory stock for this product
+        try {
+          const inventoryResponse = await fetch(`/api/inventory/${params.id}`);
+          if (inventoryResponse.ok) {
+            const inventoryData = await inventoryResponse.json();
+            setInventoryStock(inventoryData.variants || {});
+            console.log('[CardDetail] Inventory stock for', params.id, ':', inventoryData.variants);
+            
+            // Update variants with actual stock status
+            if (data.variants && data.variants.length > 0) {
+              const updatedVariants = data.variants.map((v: TCGPlayerVariant) => ({
+                ...v,
+                inStock: (inventoryData.variants[v.printing] || 0) > 0,
+                stockQuantity: inventoryData.variants[v.printing] || 0,
+              }));
+              data.variants = updatedVariants;
+            }
+          }
+        } catch (invError) {
+          console.error('[CardDetail] Error fetching inventory:', invError);
+        }
         
         // Select first variant by default
         if (data.variants && data.variants.length > 0) {
