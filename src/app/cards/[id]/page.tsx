@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { addToCart, openCart } from '@/store/cartSlice';
-import { ShoppingCartIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ShoppingCartIcon, ArrowLeftIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { TCGPlayerPrice, TCGPlayerVariant } from '@/lib/tcgplayer-price-scraper';
 import { getTypeGradient } from '@/utils/pokemonTypeGradients';
 import VanillaTilt from 'vanilla-tilt';
@@ -19,6 +19,7 @@ export default function CardDetailPage() {
   const [card, setCard] = useState<TCGPlayerPrice | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedVariant, setSelectedVariant] = useState<TCGPlayerVariant | null>(null);
+  const [isInfoExpanded, setIsInfoExpanded] = useState(false);
   const cardImageRef = useRef<HTMLImageElement>(null);
   
   useEffect(() => {
@@ -54,9 +55,9 @@ export default function CardDetailPage() {
   useEffect(() => {
     if (cardImageRef.current && !loading) {
       VanillaTilt.init(cardImageRef.current, {
-        max: 5,
+        max: 10,
         speed: 500,
-        perspective: 2000,
+        perspective: 3000,
       });
       
       // Cleanup on unmount
@@ -170,11 +171,18 @@ export default function CardDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Left Column - Image with Gradient Background */}
           <div 
-            className="flex justify-center rounded-lg p-8 lg:p-10 h-max"
+            className="flex justify-center rounded-lg p-8 lg:p-10 h-max relative"
             style={{ 
               background: getTypeGradient(card.energyType)
             }}
           >
+            {/* Card Type Badge */}
+            {card.energyType && card.energyType.length > 0 && (
+              <div className="absolute top-4 left-4 bg-white/90 text-gray-800 px-3 py-1.5 rounded-md font-interphases font-semibold text-sm shadow-sm">
+                {card.energyType[0]}
+              </div>
+            )}
+            
             <div 
               className="lg:sticky lg:top-24 self-start"
               style={{ width: '290px', height: '422px' }}
@@ -198,57 +206,91 @@ export default function CardDetailPage() {
           
           {/* Right Column - Info */}
           <div className="space-y-6">
-            {/* Title & Set */}
+            {/* Title & Basic Info */}
             <div>
-              <h1 className="text-5xl font-thunder mb-2">
+              <h1 className="text-5xl font-thunder mb-4">
                 {card.productName}
               </h1>
-              <p className="text-xl text-gray-600 font-interphases">
-                {card.setName} {card.cardNumber ? `#${card.cardNumber}` : ''}
-              </p>
-              {card.rarity && (
-                <p className="text-sm text-gray-500 font-interphases capitalize mt-1">
-                  {card.rarity}
-                </p>
-              )}
+              
+              {/* Set Name & Rarity */}
+              <div className="space-y-2">
+                {card.setName && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500 font-interphases font-semibold">Set:</span>
+                    <span className="text-gray-800 font-interphases">{card.setName}</span>
+                  </div>
+                )}
+                {card.rarity && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500 font-interphases font-semibold">Rarity:</span>
+                    <span className="text-gray-800 font-interphases capitalize">{card.rarity}</span>
+                  </div>
+                )}
+              </div>
             </div>
             
-            {/* Stats */}
-            {(card.hp || card.energyType) && (
-              <div className="flex gap-4 items-center">
-                {card.hp && (
-                  <div className="bg-red-100 text-red-800 px-4 py-2 rounded-lg font-interphases font-bold">
-                    HP {card.hp}
+            {/* Additional Information Dropdown */}
+            <div className="border-t pt-4">
+              <button
+                onClick={() => setIsInfoExpanded(!isInfoExpanded)}
+                className="w-full flex items-center justify-between text-left group"
+              >
+                <h3 className="text-lg font-interphases font-bold">Información Adicional</h3>
+                <ChevronDownIcon 
+                  className={`w-5 h-5 transition-transform ${isInfoExpanded ? 'rotate-180' : ''}`}
+                />
+              </button>
+              
+              {isInfoExpanded && (
+                <div className="mt-4 space-y-4">
+                  {/* Card Number / Rarity */}
+                  <div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-gray-800 font-interphases font-semibold">Card Number / Rarity:</span>
+                      <span className="text-gray-600 font-interphases">
+                        {card.cardNumber || 'N/A'} / {card.rarity || 'Unknown'}
+                      </span>
+                    </div>
                   </div>
-                )}
-                {card.energyType && card.energyType.length > 0 && (
-                  <div className="flex gap-2">
-                    {card.energyType.map((type, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-interphases capitalize"
-                      >
-                        {type}
+                  
+                  {/* Card Type / HP / Stage */}
+                  <div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-gray-800 font-interphases font-semibold">Card Type / HP / Stage:</span>
+                      <span className="text-gray-600 font-interphases">
+                        {card.energyType?.[0] || 'N/A'} / {card.hp || 'N/A'} / {(card.customAttributes as any)?.stage || 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Illustrator */}
+                  {(card.customAttributes as any)?.artist && (
+                    <div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-gray-800 font-interphases font-semibold">Illustrator:</span>
+                        <span className="text-gray-600 font-interphases">
+                          {(card.customAttributes as any).artist}
+                        </span>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {/* Attacks */}
-            {card.attacks && card.attacks.length > 0 && (
-              <div className="border-t pt-4">
-                <h3 className="text-lg font-interphases font-bold mb-2">Ataques</h3>
-                <ul className="space-y-2">
-                  {card.attacks.map((attack, idx) => (
-                    <li key={idx} className="text-gray-700 font-interphases">
-                      • {attack}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+                    </div>
+                  )}
+                  
+                  {/* Attacks */}
+                  {card.attacks && card.attacks.length > 0 && (
+                    <div>
+                      <h4 className="text-gray-800 font-interphases font-semibold mb-2">Ataques:</h4>
+                      <ul className="space-y-2 pl-4">
+                        {card.attacks.map((attack, idx) => (
+                          <li key={idx} className="text-gray-600 font-interphases text-sm">
+                            • {attack}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             
             {/* Variants Selection */}
             {card.variants && card.variants.length > 0 && (
