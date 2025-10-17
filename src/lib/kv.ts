@@ -1,4 +1,6 @@
 import { createClient } from 'redis';
+import fs from 'fs';
+import path from 'path';
 
 // Initialize Redis client
 let redisClient: ReturnType<typeof createClient> | null = null;
@@ -6,6 +8,34 @@ let isRedisConfigured = false;
 
 // In-memory fallback for local development
 const memoryStore = new Map<string, any>();
+
+// Local file paths for development
+const LOCAL_DATA_DIR = path.join(process.cwd(), 'data', 'local');
+const LOCAL_INVENTORY_FILE = path.join(LOCAL_DATA_DIR, 'inventory.json');
+const LOCAL_CUSTOM_PRICE_FILE = path.join(LOCAL_DATA_DIR, 'custom-price.json');
+
+// Helper: Read local JSON file
+function readLocalJSON(filePath: string): any {
+  try {
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      return JSON.parse(content);
+    }
+  } catch (error) {
+    console.error('[KV] Error reading local file:', filePath, error);
+  }
+  return null;
+}
+
+// Helper: Write local JSON file
+function writeLocalJSON(filePath: string, data: any): void {
+  try {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (error) {
+    console.error('[KV] Error writing local file:', filePath, error);
+  }
+}
 
 // Initialize Redis connection
 async function getRedisClient() {
@@ -47,19 +77,24 @@ export async function getInventory(productIds?: string[]): Promise<Record<string
     const client = await getRedisClient();
     
     if (!client) {
-      // Fallback to in-memory
-      const result: Record<string, number> = {};
+      // LOCAL DEVELOPMENT: Read from JSON file
+      console.log('[KV] No Redis connection, reading inventory from local file...');
+      const localData = readLocalJSON(LOCAL_INVENTORY_FILE);
+      const inventory = localData?.inventory || {};
+      
       if (productIds && productIds.length > 0) {
+        // Return only requested IDs
+        const result: Record<string, number> = {};
         productIds.forEach(id => {
-          result[id] = (memoryStore.get(`${INVENTORY_KEY_PREFIX}${id}`) as number) || 0;
+          result[id] = inventory[id] || 0;
         });
-      } else {
-        const allIds = memoryStore.get(INVENTORY_INDEX_KEY) as string[] || [];
-        allIds.forEach(id => {
-          result[id] = (memoryStore.get(`${INVENTORY_KEY_PREFIX}${id}`) as number) || 0;
-        });
+        console.log(`[KV] Found ${Object.keys(result).length} requested items (local file)`);
+        return result;
       }
-      return result;
+      
+      // Return all inventory
+      console.log(`[KV] Found ${Object.keys(inventory).length} total items (local file)`);
+      return inventory;
     }
 
     if (productIds && productIds.length > 0) {
@@ -145,22 +180,26 @@ export async function setInventoryBulk(items: Record<string, number>): Promise<n
     const productIds = Object.keys(items);
     
     if (!client) {
-      // Fallback to in-memory
-      memoryStore.delete(INVENTORY_INDEX_KEY);
-      const newIndex: string[] = [];
+      // LOCAL DEVELOPMENT: Write to JSON file
+      const inventory: Record<string, number> = {};
       let count = 0;
       
       productIds.forEach(productId => {
         const quantity = items[productId];
         if (quantity > 0) {
-          memoryStore.set(`${INVENTORY_KEY_PREFIX}${productId}`, quantity);
-          newIndex.push(productId);
+          inventory[productId] = quantity;
           count++;
         }
       });
       
-      memoryStore.set(INVENTORY_INDEX_KEY, newIndex);
-      console.log(`[KV] Bulk set ${count} inventory items (in-memory)`);
+      const localData = {
+        comment: "Local inventory for development. Updated from CSV upload.",
+        lastUpdated: new Date().toISOString(),
+        inventory
+      };
+      
+      writeLocalJSON(LOCAL_INVENTORY_FILE, localData);
+      console.log(`[KV] Bulk set ${count} inventory items (local file)`);
       return count;
     }
 
@@ -241,9 +280,10 @@ export async function getInventoryCount(): Promise<number> {
     const client = await getRedisClient();
     
     if (!client) {
-      // Fallback to in-memory
-      const index = memoryStore.get(INVENTORY_INDEX_KEY) as string[] || [];
-      return index.length;
+      // LOCAL DEVELOPMENT: Read from JSON file
+      const localData = readLocalJSON(LOCAL_INVENTORY_FILE);
+      const inventory = localData?.inventory || {};
+      return Object.keys(inventory).length;
     }
 
     const count = await client.sCard(INVENTORY_INDEX_KEY);
@@ -267,18 +307,19 @@ export async function getCustomPrice(): Promise<{ price: number | null; updatedA
     const client = await getRedisClient();
     
     if (!client) {
-      // Fallback to in-memory
-      const price = memoryStore.get(CUSTOM_PRICE_KEY) as number | null;
-      const updatedAt = memoryStore.get(CUSTOM_PRICE_UPDATED_KEY) as string | null;
+      // LOCAL DEVELOPMENT: Read from JSON file
+      console.log('[KV] No Redis connection, reading custom price from local file...');
+      const localData = readLocalJSON(LOCAL_CUSTOM_PRICE_FILE);
       
-      if (price && updatedAt) {
-        const daysSinceUpdate = (Date.now() - new Date(updatedAt).getTime()) / (1000 * 60 * 60 * 24);
-        if (daysSinceUpdate < 7) {
-          console.log('[KV] Found custom price (in-memory):', price);
-          return { price, updatedAt };
-        }
+      if (localData && localData.price) {
+        const price = parseFloat(localData.price);
+        const updatedAt = localData.updatedAt || new Date().toISOString();
+        
+        console.log('[KV] Found custom price (local file):', price);
+        return { price, updatedAt };
       }
       
+      console.log('[KV] No custom price found in local file');
       return { price: null, updatedAt: null };
     }
 
@@ -318,10 +359,14 @@ export async function setCustomPrice(price: number): Promise<void> {
     const updatedAt = new Date().toISOString();
     
     if (!client) {
-      // Fallback to in-memory
-      memoryStore.set(CUSTOM_PRICE_KEY, price);
-      memoryStore.set(CUSTOM_PRICE_UPDATED_KEY, updatedAt);
-      console.log('[KV] Custom price set (in-memory):', price);
+      // LOCAL DEVELOPMENT: Write to JSON file
+      const localData = {
+        price,
+        updatedAt,
+        source: 'local-development'
+      };
+      writeLocalJSON(LOCAL_CUSTOM_PRICE_FILE, localData);
+      console.log('[KV] Custom price set (local file):', price);
       return;
     }
 

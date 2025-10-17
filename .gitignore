@@ -42,3 +42,7 @@ next-env.d.ts
 
 # local pokemon tcg data cache
 /data/pokemon-tcg
+
+# local development data (KV fallback)
+/data/local/*.json
+!/data/local/.gitkeep
