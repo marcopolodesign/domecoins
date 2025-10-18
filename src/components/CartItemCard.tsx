@@ -58,6 +58,13 @@ export default function CartItemCard({
             </div>
           </div>
           
+          {/* Printing Variant (if available) */}
+          {card.printing && (
+            <p className="mt-1 text-sm font-semibold text-blue-600">
+              {card.printing}
+            </p>
+          )}
+          
           {/* Set and Card Number */}
           <p className="mt-1 text-sm text-gray-500">
             {setName} #{cardNumber}

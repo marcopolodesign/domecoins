@@ -115,9 +115,12 @@ export default function CardDetailPage() {
     // Use retailPrice (with formula applied), fallback to marketPrice
     const price = variant.retailPrice || variant.marketPrice || 0;
     
+    // Create unique ID based on productId AND printing to differentiate variants
+    const uniqueId = `${card.productId}-${variant.printing.toLowerCase().replace(/\s+/g, '-')}`;
+    
     dispatch(addToCart({
       card: {
-        id: `${card.productId}-${variant.productId}`,
+        id: uniqueId, // Unique per printing variant
         name: card.productName,
         images: {
           small: card.imageUrl,
@@ -134,6 +137,7 @@ export default function CardDetailPage() {
         categoryName: card.setName,
         setId: card.cardNumber || 'N/A',
         inStock: variant.inStock,
+        printing: variant.printing, // Store printing for cart display
       } as any,
       quantity: 1,
       priceUsd: price,
@@ -327,7 +331,8 @@ export default function CardDetailPage() {
                 <h3 className="text-2xl font-thunder mb-4">Versiones Disponibles</h3>
                 <div className="space-y-3">
                   {card.variants.map((variant, idx) => {
-                    const isSelected = selectedVariant?.productId === variant.productId;
+                    // Compare by printing to differentiate variants of the same product
+                    const isSelected = selectedVariant?.printing === variant.printing;
                     // Show retailPrice (with formula applied), fallback to marketPrice
                     const variantPrice = (variant as any).retailPrice || variant.marketPrice;
                     
@@ -339,7 +344,7 @@ export default function CardDetailPage() {
                           border-2 rounded-lg p-4 cursor-pointer transition-all
                           ${isSelected 
                             ? 'border-blue-600 bg-blue-600' 
-                            : 'border-gray-200 hover:border-gray-300'
+                            : 'border-transparent bg-gray-50 hover:border-blue-600'
                           }
                         `}
                       >
