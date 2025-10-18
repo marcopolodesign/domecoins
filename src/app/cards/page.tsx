@@ -46,8 +46,10 @@ function CardsPageContent() {
     const inStockParam = searchParams.get('inStock')
 
     const fetchInStockCards = async () => {
-      // If inStock=true, fetch from inventory and load only those cards
-      if (inStockParam === 'true') {
+      // If inStock=true OR no search query, fetch from inventory and load only those cards
+      const shouldShowInStock = inStockParam === 'true' || (!searchQuery && !rarityFilter)
+      
+      if (shouldShowInStock) {
         console.log('[CardsPage] Fetching in-stock cards from inventory...')
         
         try {
@@ -95,7 +97,7 @@ function CardsPageContent() {
         return
       }
       
-      // Normal search flow
+      // Normal search flow (when there's a search query)
       const newFilters: Record<string, string> = {}
       newFilters.name = searchQuery || 'pokemon'
       if (rarityFilter) newFilters.rarity = rarityFilter
@@ -108,7 +110,12 @@ function CardsPageContent() {
 
   // Fetch data when filters change (prevents double call)
   useEffect(() => {
-    if (filters.name && searchParams.get('inStock') !== 'true') {
+    const searchQuery = searchParams.get('search')
+    const inStockParam = searchParams.get('inStock')
+    const shouldShowInStock = inStockParam === 'true' || !searchQuery
+    
+    // Only fetch if there's a search query AND not showing in-stock
+    if (filters.name && !shouldShowInStock) {
       dispatch(fetchCards({ filters }))
     }
   }, [dispatch, filters, searchParams])
