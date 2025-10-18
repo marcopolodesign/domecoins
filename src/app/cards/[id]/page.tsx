@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { addToCart, openCart } from '@/store/cartSlice';
 import { ShoppingCartIcon, ArrowLeftIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
@@ -20,7 +19,6 @@ export default function CardDetailPage() {
   const [loading, setLoading] = useState(true);
   const [selectedVariant, setSelectedVariant] = useState<TCGPlayerVariant | null>(null);
   const [isInfoExpanded, setIsInfoExpanded] = useState(false);
-  const [inventoryStock, setInventoryStock] = useState<Record<string, number>>({});
   const cardImageRef = useRef<HTMLImageElement>(null);
   
   useEffect(() => {
@@ -41,7 +39,6 @@ export default function CardDetailPage() {
           const inventoryResponse = await fetch(`/api/inventory/${params.id}`);
           if (inventoryResponse.ok) {
             const inventoryData = await inventoryResponse.json();
-            setInventoryStock(inventoryData.variants || {});
             console.log('[CardDetail] Inventory stock for', params.id, ':', inventoryData.variants);
             
             // Update variants with actual stock status
@@ -76,8 +73,9 @@ export default function CardDetailPage() {
   
   // Initialize VanillaTilt on card image
   useEffect(() => {
-    if (cardImageRef.current && !loading) {
-      VanillaTilt.init(cardImageRef.current, {
+    const currentRef = cardImageRef.current;
+    if (currentRef && !loading) {
+      VanillaTilt.init(currentRef, {
         max: 10,
         speed: 500,
         perspective: 3000,
@@ -85,8 +83,9 @@ export default function CardDetailPage() {
       
       // Cleanup on unmount
       return () => {
-        if (cardImageRef.current && (cardImageRef.current as any).vanillaTilt) {
-          (cardImageRef.current as any).vanillaTilt.destroy();
+        const tiltInstance = (currentRef as HTMLImageElement & { vanillaTilt?: { destroy: () => void } });
+        if (tiltInstance.vanillaTilt) {
+          tiltInstance.vanillaTilt.destroy();
         }
       };
     }
@@ -231,7 +230,7 @@ export default function CardDetailPage() {
                 `}
                 sizes="(max-width: 290px) 100vw, 290px"
                 alt={card.productName}
-                className="rounded-lg object-cover w-full h-full transition-shadow duration-300 hover:shadow-2xl"
+                className="rounded-lg object-cover w-full h-full transition-all duration-300 hover:scale-105 hover:shadow-2xl"
                 loading="eager"
               />
             </div>
