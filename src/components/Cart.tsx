@@ -111,6 +111,7 @@ export default function Cart() {
                                   quantity={item.quantity}
                                   priceArs={item.priceArs}
                                   onRemoveItem={handleRemoveItem}
+                                  onUpdateQuantity={handleUpdateQuantity}
                                   onClose={handleClose}
                                 />
                               ))}

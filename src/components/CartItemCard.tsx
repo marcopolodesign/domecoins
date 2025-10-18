@@ -9,6 +9,7 @@ interface CartItemCardProps {
   quantity: number
   priceArs: number
   onRemoveItem: (cardId: string) => void
+  onUpdateQuantity?: (cardId: string, quantity: number) => void
   onClose: () => void
 }
 
@@ -17,6 +18,7 @@ export default function CartItemCard({
   quantity,
   priceArs,
   onRemoveItem,
+  onUpdateQuantity,
   onClose
 }: CartItemCardProps) {
   // Get image URL using same fallback pattern as ProductCard
@@ -27,6 +29,18 @@ export default function CartItemCard({
   
   // Get card number - handle both TCGPlayer and PokemonCard structures
   const cardNumber = card.setId || card.number || 'N/A'
+
+  const handleIncrement = () => {
+    if (onUpdateQuantity) {
+      onUpdateQuantity(card.id, quantity + 1)
+    }
+  }
+
+  const handleDecrement = () => {
+    if (onUpdateQuantity && quantity > 1) {
+      onUpdateQuantity(card.id, quantity - 1)
+    }
+  }
 
   return (
     <li className="flex py-6">
@@ -78,8 +92,40 @@ export default function CartItemCard({
           )}
         </div>
         
-        {/* Remove Button */}
-        <div className="flex flex-1 items-end justify-end text-sm">
+        {/* Quantity and Actions */}
+        <div className="flex flex-1 items-end justify-between text-sm">
+          {/* Quantity Display/Controls */}
+          <div className="flex items-center gap-2">
+            {quantity > 1 && onUpdateQuantity ? (
+              // Show increment/decrement controls if quantity > 1
+              <>
+                <button
+                  type="button"
+                  onClick={handleDecrement}
+                  className="w-6 h-6 flex items-center justify-center rounded border border-gray-300 hover:bg-gray-100 transition-colors"
+                >
+                  -
+                </button>
+                <span className="text-gray-700 font-medium min-w-[20px] text-center">
+                  {quantity}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleIncrement}
+                  className="w-6 h-6 flex items-center justify-center rounded border border-gray-300 hover:bg-gray-100 transition-colors"
+                >
+                  +
+                </button>
+              </>
+            ) : (
+              // Just show quantity if it's 1
+              <span className="text-gray-500 text-sm">
+                Cantidad: {quantity}
+              </span>
+            )}
+          </div>
+          
+          {/* Remove Button */}
           <button
             type="button"
             onClick={() => onRemoveItem(card.id)}
