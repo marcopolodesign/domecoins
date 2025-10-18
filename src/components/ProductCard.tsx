@@ -127,18 +127,18 @@ export default function ProductCard({
   return (
     <div 
       onClick={handleCardClick}
-      className={`group ${backgroundColor} overflow-hidden transition-all duration-300 flex flex-col p-4 border border-transparent hover:border-blue-500 rounded-lg w-full max-w-sm cursor-pointer ${className}`}
+      className={`group ${backgroundColor} transition-all duration-300 flex flex-col p-4 border border-transparent hover:border-blue-500 hover:shadow-md rounded-lg w-full max-w-sm cursor-pointer ${className}`}
       style={style}
     >
       {/* Top section with image and details */}
       <div className="flex flex-row flex-1">
         {/* Card image - Left side (TCG dimensions: 144x201) */}
-        <div className="relative w-36 h-50 overflow-hidden bg-gray-100 flex-shrink-0" style={{ width: '144px', height: '201px' }}>
+        <div className="relative w-36 h-50 overflow-hidden bg-gray-100 flex-shrink-0 rounded-lg" style={{ width: '144px', height: '201px' }}>
           <Image
             src={imageUrl}
             alt={card.name}
             fill
-            className="object-cover hover:scale-105 transition-transform duration-300"
+            className="object-cover group-hover:scale-110 transition-transform duration-300"
             onError={(e) => {
               const target = e.target as HTMLImageElement
               target.src = '/placeholder-card.svg'
