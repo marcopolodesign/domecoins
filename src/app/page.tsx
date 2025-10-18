@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { ChevronRightIcon, SparklesIcon, TruckIcon, CreditCardIcon } from '@heroicons/react/24/outline';
 import SearchBox from '@/components/SearchBox';
 import ReusableCardsBlock from '@/components/ReusableCardsBlock';
@@ -56,6 +56,12 @@ export default function HomePage() {
   const [carouselCards, setCarouselCards] = useState<TCGPlayerCard[]>([]);
   const [bestSellerCards, setBestSellerCards] = useState<TCGPlayerCard[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Memoize bestSellerIds to prevent unnecessary re-renders in ReusableCardsBlock
+  const bestSellerIds = useMemo(() => 
+    bestSellerCards.map(c => c.productId.toString()),
+    [bestSellerCards]
+  );
 
   // Fetch featured cards from API and distribute without repeating
   useEffect(() => {
@@ -132,8 +138,8 @@ export default function HomePage() {
           return;
         }
         
-        // 2. Fetch card details for first 20 IDs (enough for all carousels)
-        const cardPromises = productIds.slice(0, 20).map((id: string) => 
+        // 2. Fetch card details for first 11 IDs (5 for carousel + 6 for best sellers)
+        const cardPromises = productIds.slice(0, 11).map((id: string) => 
           fetch(`/api/cards/${id}`)
             .then(r => r.ok ? r.json() : null)
             .catch(err => {
@@ -161,11 +167,11 @@ export default function HomePage() {
         console.log(`[Homepage] Loaded ${validCards.length} featured cards`);
         
         // 3. Distribute cards WITHOUT repeating:
-        // - Carousel (mobile & desktop): first 10 cards
-        // - Best Sellers: next 6 cards
+        // - Carousel (mobile & desktop): first 5 cards
+        // - Best Sellers: next 6 cards (6-11)
         
-        const carouselSelection = validCards.slice(0, 10);
-        const bestSellerSelection = validCards.slice(10, 16);
+        const carouselSelection = validCards.slice(0, 5);
+        const bestSellerSelection = validCards.slice(5, 11);
         
         setCarouselCards(carouselSelection);
         setBestSellerCards(bestSellerSelection);
@@ -419,7 +425,7 @@ export default function HomePage() {
       <ReusableCardsBlock 
         title="Cartas Más Vendidas"
         subtitle="Las cartas más populares de la semana"
-        featuredCardIds={bestSellerCards.map(c => c.productId.toString())}
+        featuredCardIds={bestSellerIds}
         showRefreshButton={false}
         showFloatingButton={true}
         floatingButtonText="Ver Todas las Cartas"
