@@ -56,37 +56,38 @@ export default function ReusableCardsBlock({
       try {
         setLoading(true);
         
-        // PRIORITY 1: If featuredCardIds provided, fetch those specific cards
+        // PRIORITY 1: If featuredCardIds provided, fetch those specific cards (BATCH)
         if (featuredCardIds && featuredCardIds.length > 0) {
-          console.log(`[ReusableCardsBlock] Fetching ${featuredCardIds.length} specific featured cards...`);
+          console.log(`[ReusableCardsBlock] Fetching ${featuredCardIds.length} specific featured cards in batch...`);
           
-          const cardPromises = featuredCardIds.map(id => 
-            fetch(`/api/cards/${id}`)
-              .then(r => r.ok ? r.json() : null)
-              .catch(err => {
-                console.error(`[ReusableCardsBlock] Error fetching card ${id}:`, err);
-                return null;
-              })
-          );
+          const batchResponse = await fetch('/api/search-with-prices', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productIds: featuredCardIds })
+          });
           
-          const cardDetails = await Promise.all(cardPromises);
-          const validCards = cardDetails.filter(Boolean).map((card: any) => ({
-            productId: card.productId,
-            productName: card.productName,
-            marketPrice: card.marketPrice || 0,
-            lowestPrice: card.lowestPrice || 0,
-            setName: card.setName || 'Unknown Set',
-            rarityName: card.rarity || 'Unknown',
-            customAttributes: { 
-              cardType: card.customAttributes?.cardType || [],
-              energyType: card.energyType || []
-            }
-          }));
-          
-          console.log(`[ReusableCardsBlock] Loaded ${validCards.length} featured cards`);
-          setFeaturedCards(validCards);
-          setLoading(false);
-          return;
+          if (batchResponse.ok) {
+            const batchData = await batchResponse.json();
+            const validCards = (batchData.results || []).map((card: any) => ({
+              productId: card.productId,
+              productName: card.productName || card.name,
+              marketPrice: card.pricing?.marketPrice || 0,
+              lowestPrice: card.pricing?.lowPrice || 0,
+              setName: card.set?.name || 'Unknown Set',
+              rarityName: card.rarity || 'Unknown',
+              customAttributes: { 
+                cardType: card.types || [],
+                energyType: card.energyType || []
+              }
+            }));
+            
+            console.log(`[ReusableCardsBlock] Loaded ${validCards.length} featured cards`);
+            setFeaturedCards(validCards);
+            setLoading(false);
+            return;
+          } else {
+            console.error('[ReusableCardsBlock] Failed to fetch batch cards');
+          }
         }
         
         // PRIORITY 2: If useInventory=true, fetch from inventory API
@@ -117,29 +118,33 @@ export default function ReusableCardsBlock({
               
               console.log(`[ReusableCardsBlock] Selected random IDs:`, selectedIds);
               
-              // Fetch card details for these IDs
-              const cardPromises = selectedIds.map(id => 
-                fetch(`/api/cards/${id}`).then(r => r.ok ? r.json() : null)
-              );
+              // Fetch card details in batch for better performance
+              const batchResponse = await fetch('/api/search-with-prices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ productIds: selectedIds.map(String) })
+              });
               
-              const cardDetails = await Promise.all(cardPromises);
-              const validCards = cardDetails.filter(Boolean).map((card: any) => ({
-                productId: card.productId,
-                productName: card.productName,
-                marketPrice: card.marketPrice || 0,
-                lowestPrice: card.lowestPrice || 0,
-                setName: card.setName || 'Unknown Set',
-                rarityName: card.rarity || 'Unknown',
-                customAttributes: { 
-                  cardType: card.customAttributes?.cardType || [],
-                  energyType: card.energyType || []
-                }
-              }));
-              
-              console.log(`[ReusableCardsBlock] Loaded ${validCards.length} cards from inventory`);
-              setFeaturedCards(validCards);
-              setLoading(false);
-              return;
+              if (batchResponse.ok) {
+                const batchData = await batchResponse.json();
+                const validCards = (batchData.results || []).map((card: any) => ({
+                  productId: card.productId,
+                  productName: card.productName || card.name,
+                  marketPrice: card.pricing?.marketPrice || 0,
+                  lowestPrice: card.pricing?.lowPrice || 0,
+                  setName: card.set?.name || 'Unknown Set',
+                  rarityName: card.rarity || 'Unknown',
+                  customAttributes: { 
+                    cardType: card.types || [],
+                    energyType: card.energyType || []
+                  }
+                }));
+                
+                console.log(`[ReusableCardsBlock] Loaded ${validCards.length} cards from inventory`);
+                setFeaturedCards(validCards);
+                setLoading(false);
+                return;
+              }
             }
           }
         }

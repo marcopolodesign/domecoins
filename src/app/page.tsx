@@ -57,7 +57,7 @@ export default function HomePage() {
   const [bestSellerCards, setBestSellerCards] = useState<TCGPlayerCard[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Memoize bestSellerIds to prevent unnecessary re-renders in ReusableCardsBlock
+  // Memoize IDs to prevent unnecessary re-renders in ReusableCardsBlock
   const bestSellerIds = useMemo(() => 
     bestSellerCards.map(c => c.productId.toString()),
     [bestSellerCards]
@@ -139,30 +139,36 @@ export default function HomePage() {
         }
         
         // 2. Fetch card details for first 11 IDs (5 for carousel + 6 for best sellers)
-        const cardPromises = productIds.slice(0, 11).map((id: string) => 
-          fetch(`/api/cards/${id}`)
-            .then(r => r.ok ? r.json() : null)
-            .catch(err => {
-              console.error(`[Homepage] Error fetching card ${id}:`, err);
-              return null;
-            })
-        );
+        // Use batch endpoint for better performance
+        const selectedIds = productIds.slice(0, 11);
         
-        const cardDetails = await Promise.all(cardPromises);
-        const validCards = cardDetails
-          .filter((card): card is APICardResponse => card !== null)
-          .map((card) => ({
-            productId: card.productId,
-            productName: card.productName,
-            marketPrice: card.marketPrice || 0,
-            lowestPrice: card.lowestPrice || 0,
-            setName: card.setName || 'Unknown Set',
-            rarityName: card.rarity || 'Unknown',
-            customAttributes: { 
-              cardType: card.customAttributes?.cardType || [],
-              energyType: card.energyType || []
-            }
-          }));
+        console.log(`[Homepage] Fetching ${selectedIds.length} cards in batch...`);
+        
+        const batchResponse = await fetch('/api/search-with-prices', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productIds: selectedIds })
+        });
+        
+        if (!batchResponse.ok) {
+          console.error('[Homepage] Failed to fetch batch cards');
+          setLoading(false);
+          return;
+        }
+        
+        const batchData = await batchResponse.json();
+        const validCards = (batchData.results || []).map((card: any) => ({
+          productId: card.productId,
+          productName: card.productName || card.name,
+          marketPrice: card.pricing?.marketPrice || 0,
+          lowestPrice: card.pricing?.lowPrice || 0,
+          setName: card.set?.name || 'Unknown Set',
+          rarityName: card.rarity || 'Unknown',
+          customAttributes: { 
+            cardType: card.types || [],
+            energyType: card.energyType || []
+          }
+        }));
         
         console.log(`[Homepage] Loaded ${validCards.length} featured cards`);
         
