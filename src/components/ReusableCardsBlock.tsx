@@ -53,17 +53,18 @@ export default function ReusableCardsBlock({
 
   // Fetch featured cards from local JSON data OR inventory OR specific IDs
   useEffect(() => {
-    // Prevent multiple fetches for featuredCardIds
-    if (featuredCardIds && featuredCardIds.length > 0 && hasFetchedRef.current) {
-      console.log('[ReusableCardsBlock] Already fetched, skipping...');
-      return;
-    }
     const fetchFeaturedCards = async () => {
       try {
         setLoading(true);
         
         // PRIORITY 1: If featuredCardIds provided, fetch those specific cards (BATCH)
         if (featuredCardIds && featuredCardIds.length > 0) {
+          // Prevent multiple fetches for the same IDs
+          if (hasFetchedRef.current) {
+            console.log('[ReusableCardsBlock] Already fetched, skipping...');
+            setLoading(false);
+            return;
+          }
           console.log(`[ReusableCardsBlock] Fetching ${featuredCardIds.length} specific featured cards in batch...`);
           
           const batchResponse = await fetch('/api/search-with-prices', {
@@ -253,7 +254,7 @@ export default function ReusableCardsBlock({
 
     fetchFeaturedCards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey, useInventory, randomCount]);
+  }, [refreshKey, useInventory, randomCount, featuredCardIds?.length]);
 
   // Function to refresh cards with new random selection
   const refreshCards = () => {
