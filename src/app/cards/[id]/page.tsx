@@ -231,7 +231,7 @@ export default function CardDetailPage() {
                 `}
                 sizes="(max-width: 290px) 100vw, 290px"
                 alt={card.productName}
-                className="rounded-lg object-cover w-full h-full"
+                className="rounded-lg object-cover w-full h-full transition-shadow duration-300 hover:shadow-2xl"
                 loading="eager"
               />
             </div>
