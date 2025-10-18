@@ -102,6 +102,12 @@ export default function CardDetailPage() {
       maximumFractionDigits: 0 
     })}`;
   };
+
+  // Clean HTML tags from text (e.g., <br>, <br/>, etc.)
+  const cleanText = (text: string) => {
+    if (!text) return text;
+    return text.replace(/<br\s*\/?>/gi, ' ').replace(/\s+/g, ' ').trim();
+  };
   
   const handleAddToCart = (variant: any) => {
     if (!card) return;
@@ -305,7 +311,7 @@ export default function CardDetailPage() {
                       <ul className="space-y-2 pl-4">
                         {card.attacks.map((attack, idx) => (
                           <li key={idx} className="text-gray-600 font-interphases text-sm">
-                            • {attack}
+                            • {cleanText(attack)}
                           </li>
                         ))}
                       </ul>
