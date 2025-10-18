@@ -110,6 +110,7 @@ export default function Cart() {
                                   card={item.card}
                                   quantity={item.quantity}
                                   priceArs={item.priceArs}
+                                  inStock={item.inStock}
                                   onRemoveItem={handleRemoveItem}
                                   onUpdateQuantity={handleUpdateQuantity}
                                   onClose={handleClose}

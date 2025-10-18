@@ -8,6 +8,7 @@ interface CartItemCardProps {
   card: any // Same as ProductCard - accepts both PokemonCard and unified Card types
   quantity: number
   priceArs: number
+  inStock: boolean // Stock status
   onRemoveItem: (cardId: string) => void
   onUpdateQuantity?: (cardId: string, quantity: number) => void
   onClose: () => void
@@ -17,6 +18,7 @@ export default function CartItemCard({
   card, 
   quantity,
   priceArs,
+  inStock,
   onRemoveItem,
   onUpdateQuantity,
   onClose
@@ -78,6 +80,11 @@ export default function CartItemCard({
               {card.printing}
             </p>
           )}
+          
+          {/* Stock Status */}
+          <p className={`mt-1 text-xs font-semibold ${inStock ? 'text-green-600' : 'text-orange-600'}`}>
+            {inStock ? '✓ En Stock' : '⏱ Por Encargo'}
+          </p>
           
           {/* Set and Card Number */}
           <p className="mt-1 text-sm text-gray-500">
