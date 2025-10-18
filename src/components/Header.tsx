@@ -196,7 +196,7 @@ export default function Header() {
                     onClick={handleCartClick}
                     className={`flex items-center space-x-2 ${textColor} ${hoverColor} transition-colors duration-200`}
                   >
-                    <PokedexIcon count={totalItems} currentColor={textColor} />
+                    <PokedexIcon count={totalItems} />
                     <span className="text-lg font-semibold">
                       ${cartTotal.ars.toFixed(2)}
                     </span>

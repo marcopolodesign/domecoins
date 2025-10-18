@@ -38,88 +38,143 @@ interface TCGPlayerCard {
   };
 }
 
+// Interface for API card response
+interface APICardResponse {
+  productId: number;
+  productName: string;
+  marketPrice?: number;
+  lowestPrice?: number;
+  setName?: string;
+  rarity?: string;
+  customAttributes?: {
+    cardType?: string[];
+  };
+  energyType?: string[];
+}
+
 export default function HomePage() {
-  const [featuredCards, setFeaturedCards] = useState<TCGPlayerCard[]>([]);
+  const [carouselCards, setCarouselCards] = useState<TCGPlayerCard[]>([]);
+  const [bestSellerCards, setBestSellerCards] = useState<TCGPlayerCard[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch featured cards from local JSON data
+  // Fetch featured cards from API and distribute without repeating
   useEffect(() => {
     const fetchFeaturedCards = async () => {
       try {
         setLoading(true);
         
-        // Fetch from local JSON file
-        const response = await fetch('/data/tcgplayer-featured-cards.json');
+        console.log('[Homepage] Fetching featured cards from API...');
         
-        if (response.ok) {
-          const data = await response.json();
-          if (data.results && data.results.length > 0 && data.results[0].results) {
-            const allCards = data.results[0].results;
-            
-            // Randomly select 5 cards from the available cards
-            const shuffled = [...allCards].sort(() => 0.5 - Math.random());
-            const selectedCards = shuffled.slice(0, 5).map((result: TCGPlayerCard) => ({
-              productId: result.productId,
-              productName: result.productName,
-              marketPrice: result.marketPrice || result.lowestPrice || 0,
-              lowestPrice: result.lowestPrice || 0,
-              setName: result.setName || 'Unknown Set',
-              rarityName: result.rarityName || 'Unknown',
-              customAttributes: result.customAttributes || { cardType: [], energyType: [] }
-            }));
-            setFeaturedCards(selectedCards);
-          }
+        // 1. Get featured card IDs from KV
+        const idsResponse = await fetch('/api/featured-cards');
+        if (!idsResponse.ok) {
+          console.error('[Homepage] Failed to fetch featured card IDs');
+          // Fallback to placeholder cards
+          const fallbackCards = [
+            {
+              productId: 250309,
+              productName: 'Mew',
+              marketPrice: 4.22,
+              lowestPrice: 0.62,
+              setName: 'Celebrations',
+              rarityName: 'Holo Rare',
+              customAttributes: { cardType: ['Pokemon'], energyType: ['Psychic'] }
+            },
+            {
+              productId: 250314,
+              productName: 'Groudon',
+              marketPrice: 0.40,
+              lowestPrice: 0.04,
+              setName: 'Celebrations',
+              rarityName: 'Holo Rare',
+              customAttributes: { cardType: ['Pokemon'], energyType: ['Fighting'] }
+            },
+            {
+              productId: 250300,
+              productName: 'Ho-Oh',
+              marketPrice: 0.27,
+              lowestPrice: 0.01,
+              setName: 'Celebrations',
+              rarityName: 'Holo Rare',
+              customAttributes: { cardType: ['Pokemon'], energyType: ['Fire'] }
+            },
+            {
+              productId: 250317,
+              productName: 'Lugia',
+              marketPrice: 0.81,
+              lowestPrice: 0.06,
+              setName: 'Celebrations',
+              rarityName: 'Holo Rare',
+              customAttributes: { cardType: ['Pokemon'], energyType: ['Colorless'] }
+            },
+            {
+              productId: 250303,
+              productName: 'Pikachu',
+              marketPrice: 5.29,
+              lowestPrice: 1.99,
+              setName: 'Celebrations',
+              rarityName: 'Holo Rare',
+              customAttributes: { cardType: ['Pokemon'], energyType: ['Lightning'] }
+            }
+          ];
+          setCarouselCards(fallbackCards);
+          setBestSellerCards([]);
+          setLoading(false);
+          return;
         }
+        
+        const { productIds } = await idsResponse.json();
+        console.log(`[Homepage] Retrieved ${productIds.length} featured card IDs`);
+        
+        if (!productIds || productIds.length === 0) {
+          console.log('[Homepage] No featured cards configured');
+          setLoading(false);
+          return;
+        }
+        
+        // 2. Fetch card details for first 20 IDs (enough for all carousels)
+        const cardPromises = productIds.slice(0, 20).map((id: string) => 
+          fetch(`/api/cards/${id}`)
+            .then(r => r.ok ? r.json() : null)
+            .catch(err => {
+              console.error(`[Homepage] Error fetching card ${id}:`, err);
+              return null;
+            })
+        );
+        
+        const cardDetails = await Promise.all(cardPromises);
+        const validCards = cardDetails
+          .filter((card): card is APICardResponse => card !== null)
+          .map((card) => ({
+            productId: card.productId,
+            productName: card.productName,
+            marketPrice: card.marketPrice || 0,
+            lowestPrice: card.lowestPrice || 0,
+            setName: card.setName || 'Unknown Set',
+            rarityName: card.rarity || 'Unknown',
+            customAttributes: { 
+              cardType: card.customAttributes?.cardType || [],
+              energyType: card.energyType || []
+            }
+          }));
+        
+        console.log(`[Homepage] Loaded ${validCards.length} featured cards`);
+        
+        // 3. Distribute cards WITHOUT repeating:
+        // - Carousel (mobile & desktop): first 10 cards
+        // - Best Sellers: next 6 cards
+        
+        const carouselSelection = validCards.slice(0, 10);
+        const bestSellerSelection = validCards.slice(10, 16);
+        
+        setCarouselCards(carouselSelection);
+        setBestSellerCards(bestSellerSelection);
+        
+        console.log(`[Homepage] Carousel cards: ${carouselSelection.length}`);
+        console.log(`[Homepage] Best seller cards: ${bestSellerSelection.length}`);
+        
       } catch (error) {
-        console.error('Error fetching featured cards:', error);
-        // Fallback to placeholder cards
-        setFeaturedCards([
-          {
-            productId: 250309,
-            productName: 'Mew',
-            marketPrice: 4.22,
-            lowestPrice: 0.62,
-            setName: 'Celebrations',
-            rarityName: 'Holo Rare',
-            customAttributes: { cardType: ['Pokemon'], energyType: ['Psychic'] }
-          },
-          {
-            productId: 250314,
-            productName: 'Groudon',
-            marketPrice: 0.40,
-            lowestPrice: 0.04,
-            setName: 'Celebrations',
-            rarityName: 'Holo Rare',
-            customAttributes: { cardType: ['Pokemon'], energyType: ['Fighting'] }
-          },
-          {
-            productId: 250300,
-            productName: 'Ho-Oh',
-            marketPrice: 0.27,
-            lowestPrice: 0.01,
-            setName: 'Celebrations',
-            rarityName: 'Holo Rare',
-            customAttributes: { cardType: ['Pokemon'], energyType: ['Fire'] }
-          },
-          {
-            productId: 250317,
-            productName: 'Lugia',
-            marketPrice: 0.81,
-            lowestPrice: 0.06,
-            setName: 'Celebrations',
-            rarityName: 'Holo Rare',
-            customAttributes: { cardType: ['Pokemon'], energyType: ['Colorless'] }
-          },
-          {
-            productId: 250303,
-            productName: 'Pikachu',
-            marketPrice: 5.29,
-            lowestPrice: 1.99,
-            setName: 'Celebrations',
-            rarityName: 'Holo Rare',
-            customAttributes: { cardType: ['Pokemon'], energyType: ['Lightning'] }
-          }
-        ]);
+        console.error('[Homepage] Error fetching featured cards:', error);
       } finally {
         setLoading(false);
       }
@@ -173,7 +228,7 @@ export default function HomePage() {
                   </div>
                 ))
               ) : (
-                featuredCards.map((card) => {
+                carouselCards.map((card) => {
                   // Get card type from customAttributes
                   const cardType = card.customAttributes?.cardType?.[0] || 'Pokemon';
                   const energyType = card.customAttributes?.energyType?.[0] || '';
@@ -244,7 +299,7 @@ export default function HomePage() {
                 </div>
               ))
             ) : (
-              featuredCards.map((card, index) => {
+              carouselCards.map((card, index) => {
               // Generate random rotation and translation values
               const rotation = index % 2 === 0 
                 ? Math.random() * 15 - 7.5  // -7.5 to 7.5 degrees
@@ -360,12 +415,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Reusable Cards Section */}
+      {/* Reusable Cards Section - Best Sellers (from Featured Cards) */}
       <ReusableCardsBlock 
         title="Cartas Más Vendidas"
         subtitle="Las cartas más populares de la semana"
-        randomCount={6}
-        showRefreshButton={true}
+        featuredCardIds={bestSellerCards.map(c => c.productId.toString())}
+        showRefreshButton={false}
         showFloatingButton={true}
         floatingButtonText="Ver Todas las Cartas"
         floatingButtonHref="/cards"

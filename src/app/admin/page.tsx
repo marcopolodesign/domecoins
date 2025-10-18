@@ -22,6 +22,13 @@ export default function AdminPage() {
   const [inventorySuccess, setInventorySuccess] = useState('');
   const [inventoryStats, setInventoryStats] = useState<{totalCards: number} | null>(null);
 
+  // Featured cards management
+  const [featuredCsvFile, setFeaturedCsvFile] = useState<File | null>(null);
+  const [featuredLoading, setFeaturedLoading] = useState(false);
+  const [featuredError, setFeaturedError] = useState('');
+  const [featuredSuccess, setFeaturedSuccess] = useState('');
+  const [featuredStats, setFeaturedStats] = useState<{totalCards: number} | null>(null);
+
   // Check if already authenticated
   useEffect(() => {
     const authToken = sessionStorage.getItem('admin_auth');
@@ -29,6 +36,7 @@ export default function AdminPage() {
       setIsAuthenticated(true);
       fetchCurrentPrice();
       fetchInventoryStats();
+      fetchFeaturedStats();
     }
   }, []);
 
@@ -107,6 +115,18 @@ export default function AdminPage() {
     }
   };
 
+  const fetchFeaturedStats = async () => {
+    try {
+      const response = await fetch('/api/featured-cards');
+      if (response.ok) {
+        const data = await response.json();
+        setFeaturedStats({ totalCards: data.totalCards || 0 });
+      }
+    } catch (err) {
+      console.error('Error fetching featured cards stats:', err);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setCsvFile(e.target.files[0]);
@@ -177,6 +197,71 @@ export default function AdminPage() {
     } catch (err) {
       setInventoryError('Error al cargar el archivo');
       setInventoryLoading(false);
+    }
+  };
+
+  const handleFeaturedFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFeaturedCsvFile(e.target.files[0]);
+      setFeaturedError('');
+      setFeaturedSuccess('');
+    }
+  };
+
+  const handleFeaturedUpload = async () => {
+    if (!featuredCsvFile) {
+      setFeaturedError('Por favor selecciona un archivo CSV');
+      return;
+    }
+
+    setFeaturedLoading(true);
+    setFeaturedError('');
+    setFeaturedSuccess('');
+
+    try {
+      const reader = new FileReader();
+
+      reader.onload = async (e) => {
+        try {
+          const csvContent = e.target?.result as string;
+          
+          const response = await fetch('/api/featured-cards', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'text/csv',
+            },
+            body: csvContent,
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setFeaturedSuccess(`✅ ${data.count} cartas destacadas cargadas exitosamente`);
+            setFeaturedCsvFile(null);
+            fetchFeaturedStats();
+            
+            // Reset file input
+            const fileInput = document.getElementById('featured-csv-upload') as HTMLInputElement;
+            if (fileInput) fileInput.value = '';
+          } else {
+            const data = await response.json();
+            setFeaturedError(data.error || 'Error al cargar las cartas destacadas');
+          }
+        } catch (err) {
+          setFeaturedError('Error al procesar el archivo CSV');
+        } finally {
+          setFeaturedLoading(false);
+        }
+      };
+
+      reader.onerror = () => {
+        setFeaturedError('Error al leer el archivo');
+        setFeaturedLoading(false);
+      };
+
+      reader.readAsText(featuredCsvFile);
+    } catch (err) {
+      setFeaturedError('Error al cargar el archivo');
+      setFeaturedLoading(false);
     }
   };
 
@@ -417,6 +502,84 @@ export default function AdminPage() {
               <li>• El inventario se actualiza completamente con cada carga.</li>
               <li>• Los productos sin stock no se mostrarán como disponibles.</li>
               <li>• El inventario se almacena en memoria y se reinicia con cada deployment.</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Featured Cards Section */}
+        <div className="mt-6 bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h3 className="text-lg leading-6 font-medium text-gray-900 font-thunder mb-6">
+              Cartas Destacadas (Homepage)
+            </h3>
+
+            {featuredStats && (
+              <div className="mb-6 p-4 bg-purple-50 rounded-md">
+                <p className="text-sm text-purple-900">
+                  <span className="font-semibold">Cartas destacadas configuradas:</span> {featuredStats.totalCards}
+                </p>
+              </div>
+            )}
+
+            <form onSubmit={(e) => { e.preventDefault(); handleFeaturedUpload(); }} className="space-y-4">
+              <div>
+                <label htmlFor="featured-csv-upload" className="block text-sm font-medium text-gray-700 mb-2">
+                  Cargar Archivo CSV de Cartas Destacadas
+                </label>
+                <input
+                  type="file"
+                  id="featured-csv-upload"
+                  accept=".csv"
+                  onChange={handleFeaturedFileChange}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                  required
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                  Formato esperado: CSV con columna TCGplayer Id
+                </p>
+              </div>
+
+              {featuredCsvFile && (
+                <div className="p-3 bg-purple-50 rounded-md">
+                  <p className="text-sm text-purple-900">
+                    📄 Archivo seleccionado: <span className="font-semibold">{featuredCsvFile.name}</span>
+                  </p>
+                </div>
+              )}
+
+              {featuredError && (
+                <div className="rounded-md bg-red-50 p-4">
+                  <p className="text-sm text-red-800">{featuredError}</p>
+                </div>
+              )}
+
+              {featuredSuccess && (
+                <div className="rounded-md bg-green-50 p-4">
+                  <p className="text-sm text-green-800">{featuredSuccess}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={featuredLoading || !featuredCsvFile}
+                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {featuredLoading ? 'Cargando...' : 'Subir Cartas Destacadas'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div className="mt-6 bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h4 className="text-sm font-medium text-gray-900 mb-4">Información de Cartas Destacadas</h4>
+            <ul className="text-sm text-gray-600 space-y-2">
+              <li>• El archivo CSV debe contener la columna [TCGplayer Id].</li>
+              <li>• Las cartas se distribuyen automáticamente en los carruseles del homepage sin repetirse.</li>
+              <li>• Las cartas se cargan completamente con cada upload (sobrescribe las anteriores).</li>
+              <li>• Se recomienda tener al menos 20-30 cartas para una buena distribución.</li>
             </ul>
           </div>
         </div>

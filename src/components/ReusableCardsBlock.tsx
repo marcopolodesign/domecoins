@@ -23,6 +23,7 @@ interface ReusableCardsBlockProps {
   title?: string;
   subtitle?: string;
   cardIds?: number[];
+  featuredCardIds?: string[]; // NEW: Specific card IDs from featured cards (no repeating)
   randomCount?: number;
   className?: string;
   showRefreshButton?: boolean;
@@ -35,7 +36,8 @@ interface ReusableCardsBlockProps {
 export default function ReusableCardsBlock({ 
   title,
   subtitle,
-  cardIds = [], 
+  cardIds = [],
+  featuredCardIds = [],
   randomCount = 5,
   className = "",
   showRefreshButton = false,
@@ -48,13 +50,46 @@ export default function ReusableCardsBlock({
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Fetch featured cards from local JSON data OR inventory
+  // Fetch featured cards from local JSON data OR inventory OR specific IDs
   useEffect(() => {
     const fetchFeaturedCards = async () => {
       try {
         setLoading(true);
         
-        // NEW: If useInventory=true, fetch from inventory API
+        // PRIORITY 1: If featuredCardIds provided, fetch those specific cards
+        if (featuredCardIds && featuredCardIds.length > 0) {
+          console.log(`[ReusableCardsBlock] Fetching ${featuredCardIds.length} specific featured cards...`);
+          
+          const cardPromises = featuredCardIds.map(id => 
+            fetch(`/api/cards/${id}`)
+              .then(r => r.ok ? r.json() : null)
+              .catch(err => {
+                console.error(`[ReusableCardsBlock] Error fetching card ${id}:`, err);
+                return null;
+              })
+          );
+          
+          const cardDetails = await Promise.all(cardPromises);
+          const validCards = cardDetails.filter(Boolean).map((card: any) => ({
+            productId: card.productId,
+            productName: card.productName,
+            marketPrice: card.marketPrice || 0,
+            lowestPrice: card.lowestPrice || 0,
+            setName: card.setName || 'Unknown Set',
+            rarityName: card.rarity || 'Unknown',
+            customAttributes: { 
+              cardType: card.customAttributes?.cardType || [],
+              energyType: card.energyType || []
+            }
+          }));
+          
+          console.log(`[ReusableCardsBlock] Loaded ${validCards.length} featured cards`);
+          setFeaturedCards(validCards);
+          setLoading(false);
+          return;
+        }
+        
+        // PRIORITY 2: If useInventory=true, fetch from inventory API
         if (useInventory) {
           console.log('[ReusableCardsBlock] Fetching from inventory...');
           const inventoryResponse = await fetch('/api/inventory');
@@ -206,7 +241,7 @@ export default function ReusableCardsBlock({
 
     fetchFeaturedCards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey, useInventory, randomCount]);
+  }, [refreshKey, useInventory, randomCount, featuredCardIds]);
 
   // Function to refresh cards with new random selection
   const refreshCards = () => {

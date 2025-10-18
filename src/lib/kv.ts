@@ -13,6 +13,7 @@ const memoryStore = new Map<string, any>();
 const LOCAL_DATA_DIR = path.join(process.cwd(), 'data', 'local');
 const LOCAL_INVENTORY_FILE = path.join(LOCAL_DATA_DIR, 'inventory.json');
 const LOCAL_CUSTOM_PRICE_FILE = path.join(LOCAL_DATA_DIR, 'custom-price.json');
+const LOCAL_FEATURED_CARDS_FILE = path.join(LOCAL_DATA_DIR, 'featured-cards.json');
 
 // Helper: Read local JSON file
 function readLocalJSON(filePath: string): any {
@@ -681,4 +682,72 @@ export async function getOrderStats(): Promise<{
       totalRevenue: 0,
     };
   }
+}
+
+/**
+ * Featured Cards Management
+ * Store and retrieve featured card IDs for homepage carousels
+ */
+
+const FEATURED_CARDS_KEY = 'featured_cards';
+
+export async function setFeaturedCards(productIds: string[]): Promise<void> {
+  const client = await getRedisClient();
+  
+  if (!client) {
+    // Local development: Use JSON file
+    console.log('[KV] No Redis connection, saving featured cards to local file...');
+    const localData = {
+      comment: "Featured cards for homepage carousels. Updated from admin CSV upload.",
+      lastUpdated: new Date().toISOString(),
+      productIds: productIds,
+      count: productIds.length
+    };
+    writeLocalJSON(LOCAL_FEATURED_CARDS_FILE, localData);
+    console.log(`[KV] Saved ${productIds.length} featured cards to local file`);
+    return;
+  }
+
+  try {
+    await client.set(FEATURED_CARDS_KEY, JSON.stringify(productIds));
+    console.log(`[KV] Saved ${productIds.length} featured cards to Redis`);
+  } catch (error) {
+    console.error('[KV] Error saving featured cards:', error);
+    throw error;
+  }
+}
+
+export async function getFeaturedCards(): Promise<string[]> {
+  const client = await getRedisClient();
+  
+  if (!client) {
+    // Local development: Read from JSON file
+    console.log('[KV] No Redis connection, reading featured cards from local file...');
+    const localData = readLocalJSON(LOCAL_FEATURED_CARDS_FILE);
+    if (localData && localData.productIds && Array.isArray(localData.productIds)) {
+      console.log(`[KV] Found ${localData.productIds.length} featured cards in local file`);
+      return localData.productIds;
+    }
+    console.log('[KV] No featured cards found in local file');
+    return [];
+  }
+
+  try {
+    const data = await client.get(FEATURED_CARDS_KEY);
+    if (!data) {
+      console.log('[KV] No featured cards found in Redis');
+      return [];
+    }
+    const productIds = JSON.parse(data);
+    console.log(`[KV] Retrieved ${productIds.length} featured cards from Redis`);
+    return productIds;
+  } catch (error) {
+    console.error('[KV] Error retrieving featured cards:', error);
+    return [];
+  }
+}
+
+export async function getFeaturedCardsCount(): Promise<number> {
+  const cards = await getFeaturedCards();
+  return cards.length;
 }
