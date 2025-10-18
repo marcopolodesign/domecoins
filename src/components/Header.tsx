@@ -9,7 +9,6 @@ import {
   Bars3Icon,
   XMarkIcon,
   ExclamationTriangleIcon,
-  UserCircleIcon,
 } from '@heroicons/react/24/outline'
 import { RootState } from '@/store'
 import { toggleCart } from '@/store/cartSlice'
@@ -30,7 +29,7 @@ const navigation = [
 ]
 
 // Custom Pokedex/Card icon with badge
-function PokedexIcon({ count, currentColor }: { count: number; currentColor: string }) {
+function PokedexIcon({ count }: { count: number }) {
   return (
     <div className="relative mr-3">
         <svg width="25" height="36" viewBox="0 0 25 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -81,39 +80,11 @@ export default function Header() {
         onUpdate: (self) => {
           const scrollY = self.scroll()
           
-          // Smooth animations for notices and header
+          // Only change isScrolled state, keep notices and header fixed
           if (scrollY > 50) {
             setIsScrolled(true)
-            
-            // Move notices up smoothly
-            gsap.to(notices, {
-              y: -notices.offsetHeight,
-              duration: 0.3,
-              ease: "power2.out"
-            })
-            
-            // Move header up slightly
-            gsap.to(header, {
-              y: -45,
-              duration: 0.3,
-              ease: "power2.out"
-            })
           } else {
             setIsScrolled(false)
-            
-            // Move notices back down
-            gsap.to(notices, {
-              y: 0,
-              duration: 0.3,
-              ease: "power2.out"
-            })
-            
-            // Move header back to original position
-            gsap.to(header, {
-              y: 0,
-              duration: 0.3,
-              ease: "power2.out"
-            })
           }
         }
       })
@@ -138,37 +109,23 @@ export default function Header() {
       {/* Notices Section */}
       <div 
         ref={noticesRef}
-        className="bg-gradient-to-r from-amber-500 to-orange-500 text-white relative transition-transform duration-300 ease-out"
+        className="bg-gradient-to-r from-amber-500 to-orange-500 text-white relative"
       >
         <div className="container-custom py-3">
           <div className="flex items-center justify-center text-sm">
             <ExclamationTriangleIcon className="h-4 w-4 mr-2 animate-pulse" />
             <span className="font-medium">
-              ¡Compramos tus cartas! Te damos créditos para tu próxima compra. 
+              ¡Compramos tus cartas! 
               <a 
                 href="https://wa.me/5491131160311" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="underline hover:text-white/80 transition-colors"
+                className="ml-1 underline hover:text-white/80 transition-colors"
                 onClick={e => e.stopPropagation()}
               >
                 Consultanos por WhatsApp
               </a>
             </span>
-            <button 
-              className="ml-3 text-xs underline hover:no-underline"
-              onClick={() => {
-                if (noticesRef.current) {
-                  gsap.to(noticesRef.current, {
-                    y: -noticesRef.current.offsetHeight,
-                    duration: 0.3,
-                    ease: "power2.out"
-                  })
-                }
-              }}
-            >
-              Cerrar
-            </button>
           </div>
         </div>
       </div>

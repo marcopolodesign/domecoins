@@ -53,7 +53,7 @@ export default function CartItemCard({
             </h3>
             <div className="ml-4 text-right">
               <p className="font-medium">
-                AR${priceArs.toLocaleString('es-AR')}
+                AR$ {priceArs.toLocaleString('es-AR')}
               </p>
             </div>
           </div>

@@ -21,7 +21,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    console.log(`[SearchWithPrices POST] Fetching ${productIds.length} specific products`);
+    console.log(`[SearchWithPrices POST] Fetching ${productIds.length} specific products for in-stock view`);
+    console.log(`[SearchWithPrices POST] Product IDs:`, productIds.slice(0, 10), '...');
     
     // Fetch each product by ID
     const productPromises = productIds.map(id => fetchProductDetails(parseInt(id, 10)));
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
             retailPrice: finalRetailPrice,
             lowPrice: product!.lowestPrice,
           },
-          inStock: false, // Will be updated by inventory check
+          inStock: true, // These are explicitly in-stock cards
           hp: product!.hp || '',
           attacks: product!.attacks || [],
           types: product!.energyType || [],
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
         };
       });
     
-    console.log(`[SearchWithPrices POST] Returning ${enrichedCards.length} cards`);
+    console.log(`[SearchWithPrices POST] Successfully loaded ${enrichedCards.length} in-stock cards`);
     
     return NextResponse.json({
       results: enrichedCards,

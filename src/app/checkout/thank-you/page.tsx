@@ -227,9 +227,9 @@ function ThankYouContent() {
                     `📋 *Pedido #${orderNumber}*\n\n` +
                     `*Productos:*\n` +
                     orderDetails.items.map((item: any, i: number) => 
-                      `${i + 1}. ${item.cardName} - ${item.inStock ? '✅ En Stock' : '⏱ Por Encargo'} - AR$${item.priceArs.toLocaleString('es-AR')}`
+                      `${i + 1}. ${item.cardName} - ${item.inStock ? '✅ En Stock' : '⏱ Por Encargo'} - AR$ ${item.priceArs.toLocaleString('es-AR')}`
                     ).join('\n') +
-                    `\n\n*Total: AR$${orderDetails.totalArs.toLocaleString('es-AR')}*\n\n` +
+                    `\n\n*Total: AR$ ${orderDetails.totalArs.toLocaleString('es-AR')}*\n\n` +
                     `*Mis datos:*\n` +
                     `Nombre: ${orderDetails.customer.firstName} ${orderDetails.customer.lastName}\n` +
                     `DNI: ${orderDetails.customer.dni}\n` +

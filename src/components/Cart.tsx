@@ -128,7 +128,7 @@ export default function Cart() {
                           <div className="flex justify-between text-base font-medium text-gray-900">
                             <p>Subtotal</p>
                             <div className="text-right">
-                              <p>AR${total.ars.toLocaleString('es-AR')}</p>
+                              <p>AR$ {total.ars.toLocaleString('es-AR')}</p>
                             </div>
                           </div>
                           

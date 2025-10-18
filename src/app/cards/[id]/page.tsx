@@ -194,7 +194,7 @@ export default function CardDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Left Column - Image with Gradient Background */}
           <div 
-            className="flex justify-center rounded-lg p-8 lg:p-10 h-max relative"
+            className="flex justify-center rounded-lg py-12 p-8 lg:p-10 h-max relative"
             style={{ 
               background: getTypeGradient(card.energyType)
             }}

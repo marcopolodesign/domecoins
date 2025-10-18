@@ -14,7 +14,7 @@ const features = [
   },
   {
     name: 'Envíos Seguros',
-    description: 'Envíos a todo el país con Andreani, seguimiento incluido.',
+    description: 'Envíos a todo el país con Andreani, Correo Argentino o Uber privado.',
     icon: TruckIcon,
   },
   {

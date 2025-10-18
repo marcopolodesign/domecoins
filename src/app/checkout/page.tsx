@@ -275,7 +275,7 @@ export default function CheckoutPage() {
                         )}
                       </div>
                       <div className="text-sm font-medium text-gray-900">
-                        AR${item.priceArs.toLocaleString('es-AR')}
+                        AR$ {item.priceArs.toLocaleString('es-AR')}
                       </div>
                     </div>
                   )
@@ -286,7 +286,7 @@ export default function CheckoutPage() {
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="flex justify-between text-base font-medium text-gray-900">
                   <p>Total</p>
-                  <p>AR${total.ars.toLocaleString('es-AR')}</p>
+                  <p>AR$ {total.ars.toLocaleString('es-AR')}</p>
                 </div>
                 <p className="mt-0.5 text-sm text-gray-500">
                   USD ${total.usd.toFixed(2)}

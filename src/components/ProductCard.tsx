@@ -163,7 +163,7 @@ export default function ProductCard({
               ) : (
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                  <span className="text-sm text-yellow-600 font-medium">ENCARGO</span>
+                  <span className="text-sm text-yellow-600 font-medium">POR ENCARGO</span>
                 </div>
               )}
             </div>
@@ -208,7 +208,7 @@ export default function ProductCard({
             {usdPrice ? (
               <div>
                 <span className="text-2xl font-bold text-gray-900 font-thunder">
-                  AR${arsPrice!.toLocaleString('es-AR', { 
+                  AR$ {arsPrice!.toLocaleString('es-AR', { 
                     minimumFractionDigits: 0, 
                     maximumFractionDigits: 0 
                   })}

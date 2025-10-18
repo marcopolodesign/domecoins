@@ -439,7 +439,7 @@
             "rarityDbName": "Holo Rare",
             "weakness": null,
             "flavorText": "",
-            "attack1": "[1FF] <strong>Magma Volcano</strong> (80x)\r\n<br>Discard the top 5 cards of your deck. This attack does 80 damage for each Energy card you discarded in this way.",
+            "attack1": "[1FF] <strong>Magma Volcano</strong> (80x)\r\nDiscard the top 5 cards of your deck. This attack does 80 damage for each Energy card you discarded in this way.",
             "attack3": null,
             "attack4": null
           },
