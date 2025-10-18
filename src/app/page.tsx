@@ -147,9 +147,11 @@ export default function HomePage() {
           return;
         }
         
-        // 2. Fetch card details for first 11 IDs (5 for carousel + 6 for best sellers)
-        // Use batch endpoint for better performance
-        const selectedIds = productIds.slice(0, 11);
+        // 2. Shuffle and select random IDs (5 for carousel + 6 for best sellers)
+        const shuffled = [...productIds].sort(() => 0.5 - Math.random());
+        const selectedIds = shuffled.slice(0, 11);
+        
+        console.log(`[Homepage] Selected ${selectedIds.length} random IDs from ${productIds.length} available`);
         
         console.log(`[Homepage] Fetching ${selectedIds.length} cards in batch...`);
         
