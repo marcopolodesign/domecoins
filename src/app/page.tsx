@@ -41,11 +41,20 @@ interface TCGPlayerCard {
 // Interface for API card response
 interface APICardResponse {
   productId: number;
-  productName: string;
+  productName?: string;
+  name?: string;
   marketPrice?: number;
   lowestPrice?: number;
   setName?: string;
   rarity?: string;
+  pricing?: {
+    marketPrice?: number;
+    lowPrice?: number;
+  };
+  set?: {
+    name?: string;
+  };
+  types?: string[];
   customAttributes?: {
     cardType?: string[];
   };
@@ -157,7 +166,7 @@ export default function HomePage() {
         }
         
         const batchData = await batchResponse.json();
-        const validCards = (batchData.results || []).map((card: any) => ({
+        const validCards = (batchData.results || []).map((card: APICardResponse) => ({
           productId: card.productId,
           productName: card.productName || card.name,
           marketPrice: card.pricing?.marketPrice || 0,
@@ -246,8 +255,9 @@ export default function HomePage() {
                   const energyType = card.customAttributes?.energyType?.[0] || '';
                   
                   return (
-                    <div
+                    <Link
                       key={card.productId}
+                      href={`/cards/${card.productId}`}
                       className="flex-shrink-0"
                     >
                       <div className="relative group cursor-pointer">
@@ -283,7 +293,7 @@ export default function HomePage() {
                         {/* Hover effect overlay */}
                         <div className="absolute inset-0 bg-blue-500/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                       </div>
-                    </div>
+                    </Link>
                   );
                 })
               )}
@@ -328,8 +338,9 @@ export default function HomePage() {
                 const energyType = card.customAttributes?.energyType?.[0] || '';
                 
                 return (
-                  <div
+                  <Link
                     key={card.productId}
+                    href={`/cards/${card.productId}`}
                     className="absolute transform transition-all duration-300 hover:scale-110 hover:z-10"
                     style={{
                       transform: `rotate(${rotation}deg) translate(${translateX}px, ${translateY}px)`,
@@ -369,7 +380,7 @@ export default function HomePage() {
                       {/* Hover effect overlay */}
                       <div className="absolute inset-0 bg-blue-500/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                     </div>
-                  </div>
+                  </Link>
                 );
             })
           )}
