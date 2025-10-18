@@ -332,27 +332,33 @@ export default function CardDetailPage() {
                         className={`
                           border-2 rounded-lg p-4 cursor-pointer transition-all
                           ${isSelected 
-                            ? 'border-blue-500 bg-blue-50' 
-                            : 'border-gray-200 hover:border-blue-300'
+                            ? 'border-blue-600 bg-blue-600' 
+                            : 'border-gray-200 hover:border-gray-300'
                           }
                         `}
                       >
                         <div className="flex justify-between items-center">
                           <div>
-                            <p className="font-interphases font-bold text-lg">
+                            <p className={`font-interphases font-bold text-lg ${isSelected ? 'text-white' : 'text-gray-900'}`}>
                               {variant.printing}
                             </p>
                             {variant.condition && variant.condition !== 'Near Mint' && (
-                              <p className="text-sm text-gray-500 font-interphases">
+                              <p className={`text-sm font-interphases ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>
                                 {variant.condition}
                               </p>
                             )}
-                            <p className={`text-sm font-interphases ${variant.inStock ? 'text-green-600' : 'text-orange-600'}`}>
+                            <p className={`text-sm font-interphases font-semibold ${
+                              isSelected 
+                                ? 'text-white' 
+                                : variant.inStock 
+                                  ? 'text-green-600' 
+                                  : 'text-orange-600'
+                            }`}>
                               {variant.inStock ? '✓ En Stock' : '⏱ Por Encargo'}
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-2xl font-thunder">
+                            <p className={`text-2xl font-thunder ${isSelected ? 'text-white' : 'text-gray-900'}`}>
                               {formatPrice(variantPrice)}
                             </p>
                           </div>
