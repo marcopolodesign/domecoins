@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import ProductCard from './ProductCard';
 import { calculateFinalPrice } from '@/utils/priceFormulas';
@@ -49,9 +49,15 @@ export default function ReusableCardsBlock({
   const [featuredCards, setFeaturedCards] = useState<TCGPlayerCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const hasFetchedRef = useRef(false);
 
   // Fetch featured cards from local JSON data OR inventory OR specific IDs
   useEffect(() => {
+    // Prevent multiple fetches for featuredCardIds
+    if (featuredCardIds && featuredCardIds.length > 0 && hasFetchedRef.current) {
+      console.log('[ReusableCardsBlock] Already fetched, skipping...');
+      return;
+    }
     const fetchFeaturedCards = async () => {
       try {
         setLoading(true);
@@ -83,6 +89,7 @@ export default function ReusableCardsBlock({
             
             console.log(`[ReusableCardsBlock] Loaded ${validCards.length} featured cards`);
             setFeaturedCards(validCards);
+            hasFetchedRef.current = true; // Mark as fetched
             setLoading(false);
             return;
           } else {
@@ -246,7 +253,7 @@ export default function ReusableCardsBlock({
 
     fetchFeaturedCards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey, useInventory, randomCount, featuredCardIds]);
+  }, [refreshKey, useInventory, randomCount]);
 
   // Function to refresh cards with new random selection
   const refreshCards = () => {
