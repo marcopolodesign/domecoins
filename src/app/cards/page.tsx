@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo, Suspense } from 'react'
+import { useEffect, useState, useCallback, useMemo, Suspense, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useSearchParams } from 'next/navigation'
 import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
@@ -15,7 +15,19 @@ function CardsPageContent() {
   const dispatch = useDispatch<AppDispatch>()
   const searchParams = useSearchParams()
   const [clientSideFilter, setClientSideFilter] = useState('')
-  const [sortOrder, setSortOrder] = useState('Más relevantes')
+  const [sortOrder, setSortOrder] = useState('Precio: Menor a mayor')
+  const [showOnlyInStock, setShowOnlyInStock] = useState(false)
+  
+  // Infinite scroll state for in-stock cards
+  const [allInStockIds, setAllInStockIds] = useState<string[]>([])
+  const [displayedCards, setDisplayedCards] = useState<any[]>([])
+  const [currentBatch, setCurrentBatch] = useState(0)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [hasMoreCards, setHasMoreCards] = useState(true)
+  const [isLoadingInStock, setIsLoadingInStock] = useState(false)
+  const observerTarget = useRef<HTMLDivElement>(null)
+  
+  const CARDS_PER_BATCH = 20
   
   const { 
     cards, 
@@ -39,18 +51,19 @@ function CardsPageContent() {
     console.log('[CardsPage] Current Dollar Rate:', dolarBlueRate)
   }, [dolarBlueRate])
 
-  // Initialize filters from URL params (only once on mount)
+  // Initialize: Fetch inventory IDs and load first batch
   useEffect(() => {
     const searchQuery = searchParams.get('search')
     const rarityFilter = searchParams.get('rarity')
     const inStockParam = searchParams.get('inStock')
 
-    const fetchInStockCards = async () => {
-      // If inStock=true OR no search query, fetch from inventory and load only those cards
-      const shouldShowInStock = inStockParam === 'true' || (!searchQuery && !rarityFilter)
+    const fetchInStockInventory = async () => {
+      // Only show ONLY in-stock cards if inStock=true is explicitly set
+      const shouldShowOnlyInStock = inStockParam === 'true'
       
-      if (shouldShowInStock) {
-        console.log('[CardsPage] Fetching in-stock cards from inventory...')
+      if (shouldShowOnlyInStock) {
+        console.log('[CardsPage] Fetching in-stock inventory...')
+        setIsLoadingInStock(true)
         
         try {
           const inventoryResponse = await fetch('/api/inventory')
@@ -67,37 +80,38 @@ function CardsPageContent() {
             
             console.log(`[CardsPage] Found ${inStockIds.length} products in stock`)
             
+            // Store all IDs for pagination
+            setAllInStockIds(inStockIds)
+            setCurrentBatch(0)
+            setDisplayedCards([])
+            setHasMoreCards(inStockIds.length > 0)
+            
+            // Load first batch
             if (inStockIds.length > 0) {
-              // Fetch cards by specific IDs from TCGPlayer
-              const response = await fetch('/api/search-with-prices', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                  productIds: inStockIds,
-                  pageSize: 50 
-                })
-              })
-              
-              if (response.ok) {
-                const data = await response.json()
-                console.log(`[CardsPage] Loaded ${data.results?.length || 0} in-stock cards from TCGPlayer`)
-                
-                // Manually set cards in Redux (bypass normal filters)
-                dispatch(setInStockCards(data.results || []))
-                return
-              }
+              loadCardBatch(inStockIds, 0)
+            } else {
+              setIsLoadingInStock(false)
             }
+            
+            return
           }
         } catch (error) {
           console.error('[CardsPage] Error fetching in-stock cards:', error)
+          setIsLoadingInStock(false)
         }
         
         // Fallback: no inventory or error
+        setAllInStockIds([])
+        setDisplayedCards([])
+        setIsLoadingInStock(false)
         dispatch(setFilters({ name: '' }))
         return
       }
       
-      // Normal search flow (when there's a search query)
+      // Normal search flow (default: show all cards from search, with in-stock first)
+      setAllInStockIds([]) // Clear infinite scroll state
+      setDisplayedCards([])
+      setIsLoadingInStock(false)
       const newFilters: Record<string, string> = {}
       newFilters.name = searchQuery || 'pokemon'
       if (rarityFilter) newFilters.rarity = rarityFilter
@@ -105,17 +119,16 @@ function CardsPageContent() {
       dispatch(setFilters(newFilters))
     }
     
-    fetchInStockCards()
+    fetchInStockInventory()
   }, [searchParams, dispatch])
 
   // Fetch data when filters change (prevents double call)
   useEffect(() => {
-    const searchQuery = searchParams.get('search')
     const inStockParam = searchParams.get('inStock')
-    const shouldShowInStock = inStockParam === 'true' || !searchQuery
+    const shouldShowOnlyInStock = inStockParam === 'true'
     
-    // Only fetch if there's a search query AND not showing in-stock
-    if (filters.name && !shouldShowInStock) {
+    // Only fetch if NOT showing the in-stock-only view
+    if (filters.name && !shouldShowOnlyInStock) {
       dispatch(fetchCards({ filters }))
     }
   }, [dispatch, filters, searchParams])
@@ -130,11 +143,59 @@ function CardsPageContent() {
     dispatch(setFilters({ name: '' }))
   }
 
+  // Load a batch of cards by IDs
+  const loadCardBatch = async (allIds: string[], batchIndex: number) => {
+    const startIdx = batchIndex * CARDS_PER_BATCH
+    const endIdx = startIdx + CARDS_PER_BATCH
+    const batchIds = allIds.slice(startIdx, endIdx)
+    
+    if (batchIds.length === 0) {
+      setHasMoreCards(false)
+      setIsLoadingInStock(false)
+      return
+    }
+    
+    try {
+      const response = await fetch('/api/search-with-prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          productIds: batchIds,
+          pageSize: CARDS_PER_BATCH 
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        const newCards = data.results || []
+        
+        setDisplayedCards(prev => [...prev, ...newCards])
+        setCurrentBatch(batchIndex)
+        setHasMoreCards(endIdx < allIds.length)
+        setIsLoadingInStock(false)
+        setIsLoadingMore(false)
+        
+        console.log(`[CardsPage] Loaded batch ${batchIndex + 1}, cards: ${newCards.length}`)
+      }
+    } catch (error) {
+      console.error('[CardsPage] Error loading card batch:', error)
+      setIsLoadingInStock(false)
+      setIsLoadingMore(false)
+    }
+  }
+
+  // Check if we're showing in-stock view
+  const inStockParam = searchParams.get('inStock')
+  const showingInStock = inStockParam === 'true'
+  
+  // Determine which cards to use (in-stock batch loaded or search results)
+  const sourceCards = (showingInStock && displayedCards.length > 0) ? displayedCards : cards
+
   // Client-side filtering and sorting
   const filteredAndSortedCards = useMemo(() => {
-    if (!cards || cards.length === 0) return cards
+    if (!sourceCards || sourceCards.length === 0) return sourceCards
     
-    let filtered = [...cards]
+    let filtered = [...sourceCards]
     
     // Apply client-side text filter
     if (clientSideFilter.trim()) {
@@ -146,45 +207,38 @@ function CardsPageContent() {
       )
     }
     
+    // Apply "En Stock" filter
+    if (showOnlyInStock) {
+      filtered = filtered.filter(card => {
+        const isInStock = 'inStock' in card ? card.inStock : false
+        return isInStock
+      })
+    }
     
     // Sort cards
     filtered.sort((a, b) => {
-      // First priority: in-stock cards
+      // First priority: in-stock cards always at top
       const aInStock = 'inStock' in a ? a.inStock : false
       const bInStock = 'inStock' in b ? b.inStock : false
       
       if (aInStock && !bInStock) return -1
       if (!aInStock && bInStock) return 1
       
-      // Second priority: apply selected sort order
-      if (sortOrder === 'Precio: Menor a mayor') {
-        const aPrice = a.pricing?.marketPrice || 0
-        const bPrice = b.pricing?.marketPrice || 0
-        return aPrice - bPrice
-      }
+      // Second priority: apply price sort order
+      const aPrice = a.pricing?.marketPrice || 0
+      const bPrice = b.pricing?.marketPrice || 0
       
-      if (sortOrder === 'Precio: Mayor a menor') {
-        const aPrice = a.pricing?.marketPrice || 0
-        const bPrice = b.pricing?.marketPrice || 0
+      if (sortOrder === 'Precio: Menor a mayor') {
+        return aPrice - bPrice
+      } else if (sortOrder === 'Precio: Mayor a menor') {
         return bPrice - aPrice
       }
-      
-      if (sortOrder === 'Más recientes') {
-        // Use card ID or other date field if available
-        return b.id.localeCompare(a.id)
-      }
-      
-      // Default: "Más relevantes" - keep original order (in-stock first)
       
       return 0
     })
     
     return filtered
-  }, [cards, clientSideFilter, sortOrder])
-
-  // Check if we're filtering by in-stock
-  const inStockParam = searchParams.get('inStock')
-  const showingInStock = inStockParam === 'true'
+  }, [sourceCards, clientSideFilter, sortOrder, showOnlyInStock])
 
   return (
     <div className="min-h-screen bg-gray-50 mt-32">
@@ -193,7 +247,7 @@ function CardsPageContent() {
         <div>
           <h1 className="text-5xl font-bold text-gray-900 mb-2 font-thunder">
             {showingInStock
-              ? `Cartas en Stock (${pagination.totalCount})`
+              ? `Cartas en Stock (${allInStockIds.length})`
               : filters.name && filters.name.trim() !== ''
               ? `Resultados para ${filters.name} (${pagination.totalCount})`
               : 'Catálogo de Cartas Pokemon'}
@@ -244,8 +298,8 @@ function CardsPageContent() {
 
           {/* Filter Bar */}
           <div className="flex flex-col sm:flex-row gap-3 justify-between">
-            {/* Left side: Search query chip */}
-            {filters.name && filters.name.trim() !== '' && (
+            {/* Left side: Search query chip (hide when showing in-stock) */}
+            {filters.name && filters.name.trim() !== '' && !showingInStock && (
               <div className="flex items-center gap-3 border-2 border-blue-500 px-6 py-3 rounded-full font-interphases w-max">
                 <span className="text-base text-gray-700 font-interphases">
                   <span className="font-medium font-interphases">{filters.name}</span>
@@ -260,7 +314,7 @@ function CardsPageContent() {
               </div>
             )}
 
-            {/* Right side: Filter input and Sort dropdown */}
+            {/* Right side: Filter input, Stock toggle, and Sort dropdown */}
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto sm:items-end">
               {/* Client-side filter input */}
               <input
@@ -272,6 +326,19 @@ function CardsPageContent() {
                 style={{ backgroundColor: '#F0F0F0' }}
               />
 
+              {/* "En Stock" Toggle */}
+              <button
+                onClick={() => setShowOnlyInStock(!showOnlyInStock)}
+                className={`flex items-center gap-2 py-3 px-4 rounded-md font-interphases text-base font-medium transition-all ${
+                  showOnlyInStock
+                    ? 'bg-green-600 text-white shadow-md'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <div className={`w-2 h-2 rounded-full ${showOnlyInStock ? 'bg-white' : 'bg-green-500'}`}></div>
+                <span>En Stock</span>
+              </button>
+
               {/* Sort dropdown */}
               <div className="relative w-full sm:w-auto">
                 <select
@@ -279,10 +346,8 @@ function CardsPageContent() {
                   onChange={(e) => setSortOrder(e.target.value)}
                   className="w-full sm:w-auto bg-white border border-gray-300 py-3 px-4 pr-10 rounded-md appearance-none cursor-pointer font-interphases text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="Más relevantes">Más relevantes</option>
-                  <option value="Precio: Mayor a menor">Precio: Mayor a menor</option>
                   <option value="Precio: Menor a mayor">Precio: Menor a mayor</option>
-                  <option value="Más recientes">Más recientes</option>
+                  <option value="Precio: Mayor a menor">Precio: Mayor a menor</option>
                 </select>
                 <ChevronDownIcon className="h-5 w-5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" />
               </div>
@@ -292,17 +357,28 @@ function CardsPageContent() {
 
           {/* Main content */}
           <div>
-            {/* Loading Overlay */}
-            {loading && (
+            {/* Loading Overlay - Search */}
+            {loading && filters.name && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <div className="flex items-center gap-3">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                   <div>
                     <p className="text-sm font-medium text-blue-900">
-                      🔍 Buscando &quot;{filters.name}&quot; en TCGPlayer...
+                      🔍 Buscando cartas...
                     </p>
-                    <p className="text-xs text-blue-600 mt-0.5">
-                      Obteniendo precios actualizados del mercado
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Loading Overlay - In Stock */}
+            {isLoadingInStock && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-green-600"></div>
+                  <div>
+                    <p className="text-sm font-medium text-green-900">
+                      📦 Buscando cartas...
                     </p>
                   </div>
                 </div>
@@ -310,7 +386,7 @@ function CardsPageContent() {
             )}
 
             {/* Cards grid */}
-            {loading ? (
+            {(loading || isLoadingInStock) ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[...Array(12)].map((_, i) => (
                   <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">

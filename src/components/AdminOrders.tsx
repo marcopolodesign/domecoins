@@ -231,6 +231,32 @@ export default function AdminOrders() {
                       </div>
                     </div>
 
+                    {/* Shipping & Comments */}
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium text-gray-900 mb-2">Envío & Comentarios</h4>
+                      <div className="bg-white p-3 rounded space-y-2 text-sm">
+                        {order.shippingMethod && (
+                          <div>
+                            <span className="text-gray-600">Método de Envío:</span>{' '}
+                            <span className="text-gray-900 font-medium">
+                              {order.shippingMethod === 'pickup' ? '📍 Retiro por warehouse' : '🚚 Envío a domicilio'}
+                            </span>
+                            {order.shippingCost !== undefined && order.shippingCost > 0 && (
+                              <span className="text-gray-600 ml-2">
+                                (AR$ {order.shippingCost.toLocaleString('es-AR')})
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {order.comments && (
+                          <div>
+                            <span className="text-gray-600">Comentarios:</span>
+                            <p className="text-gray-900 mt-1 p-2 bg-gray-50 rounded italic">&ldquo;{order.comments}&rdquo;</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Items */}
                     <div className="mb-4">
                       <h4 className="text-sm font-medium text-gray-900 mb-2">Items ({order.items.length})</h4>
@@ -240,6 +266,12 @@ export default function AdminOrders() {
                             <div className="flex-1">
                               <p className="font-medium text-gray-900">{item.cardName}</p>
                               <p className="text-gray-600 text-xs">{item.setName}</p>
+                              {item.printing && (
+                                <p className="text-blue-600 text-xs font-semibold mt-0.5">{item.printing}</p>
+                              )}
+                              {item.quantity && (
+                                <p className="text-gray-600 text-xs mt-0.5">Cantidad: {item.quantity}</p>
+                              )}
                               {!item.inStock && (
                                 <span className="inline-block mt-1 text-xs text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded">
                                   A encargo
@@ -248,6 +280,9 @@ export default function AdminOrders() {
                             </div>
                             <div className="text-right">
                               <p className="font-medium">AR${item.priceArs.toLocaleString('es-AR')}</p>
+                              {item.quantity && item.quantity > 1 && (
+                                <p className="text-xs text-gray-500">x{item.quantity}</p>
+                              )}
                             </div>
                           </div>
                         ))}

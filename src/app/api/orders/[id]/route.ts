@@ -8,7 +8,22 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    console.log('[OrdersAPI] Fetching order with ID:', id);
+    
     const order = await getOrder(id);
+    
+    console.log('[OrdersAPI] Order retrieved:', order ? 'Found' : 'Not found');
+    if (order) {
+      console.log('[OrdersAPI] Order data:', {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        itemsCount: order.items?.length,
+        hasCustomer: !!order.customer,
+        shippingMethod: order.shippingMethod,
+        shippingCost: order.shippingCost,
+        comments: order.comments,
+      });
+    }
     
     if (!order) {
       return NextResponse.json(
@@ -22,7 +37,7 @@ export async function GET(
       order,
     });
   } catch (error) {
-    console.error('Error fetching order:', error);
+    console.error('[OrdersAPI] Error fetching order:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch order' },
       { status: 500 }

@@ -14,6 +14,8 @@ const LOCAL_DATA_DIR = path.join(process.cwd(), 'data', 'local');
 const LOCAL_INVENTORY_FILE = path.join(LOCAL_DATA_DIR, 'inventory.json');
 const LOCAL_CUSTOM_PRICE_FILE = path.join(LOCAL_DATA_DIR, 'custom-price.json');
 const LOCAL_FEATURED_CARDS_FILE = path.join(LOCAL_DATA_DIR, 'featured-cards.json');
+const LOCAL_ORDERS_FILE = path.join(LOCAL_DATA_DIR, 'orders.json');
+const LOCAL_BLACKLIST_FILE = path.join(LOCAL_DATA_DIR, 'blacklist-cards.json');
 
 // Helper: Read local JSON file
 function readLocalJSON(filePath: string): any {
@@ -429,6 +431,8 @@ export interface Order {
     phone: string;
     email: string;
     address: string;
+    comments?: string; // Customer comments
+    shipping?: string; // 'pickup' or 'delivery'
   };
   items: Array<{
     cardId: string;
@@ -436,6 +440,8 @@ export interface Order {
     imageUrl: string;
     setName: string;
     rarity: string;
+    printing?: string; // Variant type (e.g., "Holofoil", "Normal", "Reverse Holofoil")
+    quantity?: number; // Quantity ordered
     priceUsd: number;
     priceArs: number;
     inStock: boolean;
@@ -444,6 +450,9 @@ export interface Order {
   itemsToOrder: number;
   totalArs: number;
   totalUsd: number;
+  shippingMethod?: 'pickup' | 'delivery';
+  shippingCost?: number;
+  comments?: string;
   paymentMethod: 'transfer' | 'mercadopago' | null;
   paymentLink: string | null;
   paymentStatus: 'pending' | 'sent' | 'confirmed' | null;
@@ -490,22 +499,31 @@ export async function createOrder(orderData: Omit<Order, 'id' | 'orderNumber' | 
       ...orderData,
     };
     
+    console.log('[KV] Creating order:', {
+      orderNumber,
+      shippingMethod: order.shippingMethod,
+      shippingCost: order.shippingCost,
+      comments: order.comments,
+      itemsCount: order.items?.length,
+    });
+    
     const key = `${ORDER_KEY_PREFIX}${id}`;
     
     if (!client) {
-      // In-memory fallback
-      memoryStore.set(key, order);
-      const index = memoryStore.get(ORDER_INDEX_KEY) as string[] || [];
-      index.push(id);
-      memoryStore.set(ORDER_INDEX_KEY, index);
-      console.log('[KV] Order created (in-memory):', orderNumber);
+      // LOCAL DEVELOPMENT: Save to JSON file
+      console.log('[KV] No Redis connection, saving order to local file...');
+      const localData = readLocalJSON(LOCAL_ORDERS_FILE) || { orders: {} };
+      localData.orders = localData.orders || {};
+      localData.orders[id] = order;
+      writeLocalJSON(LOCAL_ORDERS_FILE, localData);
+      console.log('[KV] Order created (local file):', orderNumber);
       return order;
     }
     
     await client.set(key, JSON.stringify(order));
     await client.sAdd(ORDER_INDEX_KEY, id);
     
-    console.log('[KV] Order created:', orderNumber);
+    console.log('[KV] Order created (Redis):', orderNumber);
     return order;
   } catch (error) {
     console.error('[KV] Error creating order:', error);
@@ -522,8 +540,12 @@ export async function getOrder(orderId: string): Promise<Order | null> {
     const key = `${ORDER_KEY_PREFIX}${orderId}`;
     
     if (!client) {
-      // In-memory fallback
-      return memoryStore.get(key) as Order || null;
+      // LOCAL DEVELOPMENT: Read from JSON file
+      console.log('[KV] No Redis connection, reading order from local file...');
+      const localData = readLocalJSON(LOCAL_ORDERS_FILE);
+      const order = localData?.orders?.[orderId] || null;
+      console.log('[KV] Order found in local file:', order ? 'Yes' : 'No');
+      return order;
     }
     
     const data = await client.get(key);
@@ -544,9 +566,13 @@ export async function getAllOrders(): Promise<Order[]> {
     const client = await getRedisClient();
     
     if (!client) {
-      // In-memory fallback
-      const index = memoryStore.get(ORDER_INDEX_KEY) as string[] || [];
-      return index.map(id => memoryStore.get(`${ORDER_KEY_PREFIX}${id}`) as Order).filter(Boolean);
+      // LOCAL DEVELOPMENT: Read from JSON file
+      console.log('[KV] No Redis connection, reading all orders from local file...');
+      const localData = readLocalJSON(LOCAL_ORDERS_FILE);
+      const ordersObj = localData?.orders || {};
+      const orders = Object.values(ordersObj) as Order[];
+      console.log(`[KV] Found ${orders.length} orders in local file`);
+      return orders;
     }
     
     const orderIds = await client.sMembers(ORDER_INDEX_KEY) || [];
@@ -592,14 +618,18 @@ export async function updateOrder(orderId: string, updates: Partial<Order>): Pro
     };
     
     if (!client) {
-      // In-memory fallback
-      memoryStore.set(key, updatedOrder);
-      console.log('[KV] Order updated (in-memory):', orderId);
+      // LOCAL DEVELOPMENT: Save to JSON file
+      console.log('[KV] No Redis connection, updating order in local file...');
+      const localData = readLocalJSON(LOCAL_ORDERS_FILE) || { orders: {} };
+      localData.orders = localData.orders || {};
+      localData.orders[orderId] = updatedOrder;
+      writeLocalJSON(LOCAL_ORDERS_FILE, localData);
+      console.log('[KV] Order updated (local file):', orderId);
       return updatedOrder;
     }
     
     await client.set(key, JSON.stringify(updatedOrder));
-    console.log('[KV] Order updated:', orderId);
+    console.log('[KV] Order updated (Redis):', orderId);
     return updatedOrder;
   } catch (error) {
     console.error('[KV] Error updating order:', error);
@@ -616,17 +646,22 @@ export async function deleteOrder(orderId: string): Promise<boolean> {
     const key = `${ORDER_KEY_PREFIX}${orderId}`;
     
     if (!client) {
-      // In-memory fallback
-      memoryStore.delete(key);
-      const index = memoryStore.get(ORDER_INDEX_KEY) as string[] || [];
-      memoryStore.set(ORDER_INDEX_KEY, index.filter(id => id !== orderId));
-      console.log('[KV] Order deleted (in-memory):', orderId);
-      return true;
+      // LOCAL DEVELOPMENT: Delete from JSON file
+      console.log('[KV] No Redis connection, deleting order from local file...');
+      const localData = readLocalJSON(LOCAL_ORDERS_FILE);
+      if (localData?.orders?.[orderId]) {
+        delete localData.orders[orderId];
+        writeLocalJSON(LOCAL_ORDERS_FILE, localData);
+        console.log('[KV] Order deleted (local file):', orderId);
+        return true;
+      }
+      console.log('[KV] Order not found for deletion:', orderId);
+      return false;
     }
     
     await client.del(key);
     await client.sRem(ORDER_INDEX_KEY, orderId);
-    console.log('[KV] Order deleted:', orderId);
+    console.log('[KV] Order deleted (Redis):', orderId);
     return true;
   } catch (error) {
     console.error('[KV] Error deleting order:', error);
@@ -750,4 +785,71 @@ export async function getFeaturedCards(): Promise<string[]> {
 export async function getFeaturedCardsCount(): Promise<number> {
   const cards = await getFeaturedCards();
   return cards.length;
+}
+
+/**
+ * Blacklist Management
+ * Store product IDs that should NOT be displayed anywhere in the site
+ */
+
+const BLACKLIST_KEY = 'blacklist:productIds';
+
+export async function setBlacklistCards(productIds: string[]): Promise<void> {
+  const client = await getRedisClient();
+  
+  if (!client) {
+    // Local development: Use JSON file
+    console.log('[KV] No Redis connection, saving blacklist to local file...');
+    const localData = {
+      comment: "Blacklisted cards that should not be displayed. Updated from admin CSV upload.",
+      lastUpdated: new Date().toISOString(),
+      productIds: productIds,
+      count: productIds.length
+    };
+    
+    const dir = path.dirname(LOCAL_BLACKLIST_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    fs.writeFileSync(LOCAL_BLACKLIST_FILE, JSON.stringify(localData, null, 2));
+    console.log(`[KV] Saved ${productIds.length} blacklisted cards to ${LOCAL_BLACKLIST_FILE}`);
+    return;
+  }
+
+  await client.del(BLACKLIST_KEY);
+  if (productIds.length > 0) {
+    await client.sadd(BLACKLIST_KEY, ...productIds);
+  }
+  console.log(`[KV] Saved ${productIds.length} blacklisted product IDs to Redis`);
+}
+
+export async function getBlacklistCards(): Promise<string[]> {
+  const client = await getRedisClient();
+  
+  if (!client) {
+    // Local development: Read from JSON file
+    console.log('[KV] No Redis connection, reading blacklist from local file...');
+    const localData = readLocalJSON(LOCAL_BLACKLIST_FILE);
+    if (localData && localData.productIds && Array.isArray(localData.productIds)) {
+      console.log(`[KV] Found ${localData.productIds.length} blacklisted cards in local file`);
+      return localData.productIds;
+    }
+    console.log('[KV] No blacklist file found, returning empty array');
+    return [];
+  }
+
+  const productIds = await client.smembers(BLACKLIST_KEY);
+  console.log(`[KV] Retrieved ${productIds.length} blacklisted product IDs from Redis`);
+  return productIds;
+}
+
+export async function getBlacklistCardsCount(): Promise<number> {
+  const cards = await getBlacklistCards();
+  return cards.length;
+}
+
+export async function isProductBlacklisted(productId: string): Promise<boolean> {
+  const blacklist = await getBlacklistCards();
+  return blacklist.includes(productId);
 }

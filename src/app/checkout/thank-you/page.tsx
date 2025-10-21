@@ -16,17 +16,26 @@ function ThankYouContent() {
 
   useEffect(() => {
     if (orderId) {
+      console.log('[ThankYou] Fetching order details for:', orderId);
       // Fetch order details
       fetch(`/api/orders/${orderId}`)
         .then(res => res.json())
         .then(data => {
+          console.log('[ThankYou] API response:', data);
           if (data.success) {
             setOrderDetails(data.order)
+            console.log('[ThankYou] Order details set:', data.order);
+          } else {
+            console.error('[ThankYou] Failed to fetch order:', data.error);
           }
           setLoading(false)
         })
-        .catch(() => setLoading(false))
+        .catch((error) => {
+          console.error('[ThankYou] Error fetching order:', error);
+          setLoading(false)
+        })
     } else {
+      console.log('[ThankYou] No orderId provided');
       setLoading(false)
     }
   }, [orderId])
@@ -56,6 +65,23 @@ function ThankYouContent() {
             </p>
           </div>
 
+          {/* Loading State */}
+          {loading && (
+            <div className="mt-8 text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <p className="mt-2 text-sm text-gray-600">Cargando detalles del pedido...</p>
+            </div>
+          )}
+
+          {/* No Order Details State */}
+          {!loading && !orderDetails && orderId && (
+            <div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+              <p className="text-sm text-yellow-800">
+                No se pudieron cargar los detalles del pedido. Por favor contacta con soporte con tu número de pedido: <span className="font-semibold">{orderNumber}</span>
+              </p>
+            </div>
+          )}
+
           {/* Order Details */}
           {!loading && orderDetails && (
             <div className="mt-8 border-t border-gray-200 pt-8 space-y-8">
@@ -80,8 +106,14 @@ function ThankYouContent() {
                       <div className="flex-1 min-w-0">
                         <h3 className="text-sm font-semibold text-gray-900 truncate">{item.cardName}</h3>
                         <p className="text-xs text-gray-500 mt-1">{item.setName}</p>
+                        {item.printing && (
+                          <p className="text-xs text-blue-600 font-semibold mt-0.5">{item.printing}</p>
+                        )}
+                        {item.quantity && (
+                          <p className="text-xs text-gray-600 mt-0.5">Cantidad: {item.quantity}</p>
+                        )}
                         {item.rarity && (
-                          <p className="text-xs text-gray-500 capitalize">{item.rarity}</p>
+                          <p className="text-xs text-gray-500 capitalize mt-0.5">{item.rarity}</p>
                         )}
                         <div className="mt-2">
                           {item.inStock ? (
@@ -101,9 +133,9 @@ function ThankYouContent() {
                         <p className="text-sm font-semibold text-gray-900">
                           AR$ {item.priceArs.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
-                        <p className="text-xs text-gray-500">
-                          USD ${item.priceUsd.toFixed(2)}
-                        </p>
+                        {item.quantity && item.quantity > 1 && (
+                          <p className="text-xs text-gray-500">x{item.quantity}</p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -112,30 +144,53 @@ function ThankYouContent() {
 
               {/* Order Summary */}
               <div className="bg-gray-50 rounded-lg p-6">
-                <div className="flex justify-between text-sm mb-3">
-                  <span className="text-gray-600">Items totales:</span>
-                  <span className="font-medium text-gray-900">{orderDetails.items.length}</span>
-                </div>
-                {orderDetails.itemsInStock > 0 && (
-                  <div className="flex justify-between text-sm mb-3">
-                    <span className="text-gray-600">En stock:</span>
-                    <span className="font-medium text-green-700">{orderDetails.itemsInStock}</span>
+                <h3 className="text-lg font-medium text-gray-900 mb-4 font-interphases">Resumen del Pedido</h3>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Items totales:</span>
+                    <span className="font-medium text-gray-900">{orderDetails.items.length}</span>
                   </div>
-                )}
-                {orderDetails.itemsToOrder > 0 && (
-                  <div className="flex justify-between text-sm mb-3">
-                    <span className="text-gray-600">A encargo:</span>
-                    <span className="font-medium text-yellow-700">{orderDetails.itemsToOrder}</span>
+                  {orderDetails.itemsInStock > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">En stock:</span>
+                      <span className="font-medium text-green-700">{orderDetails.itemsInStock}</span>
+                    </div>
+                  )}
+                  {orderDetails.itemsToOrder > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">A encargo:</span>
+                      <span className="font-medium text-yellow-700">{orderDetails.itemsToOrder}</span>
+                    </div>
+                  )}
+                  
+                  {/* Shipping Info */}
+                  {orderDetails.shippingMethod && (
+                    <div className="pt-3 border-t border-gray-300">
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-gray-600">Método de Envío:</span>
+                        <span className="font-medium text-gray-900">
+                          {orderDetails.shippingMethod === 'pickup' ? '📍 Retiro por warehouse' : '🚚 Envío a domicilio'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Costo de Envío:</span>
+                        <span className="font-medium text-gray-900">
+                          {orderDetails.shippingCost && orderDetails.shippingCost > 0 
+                            ? `AR$ ${orderDetails.shippingCost.toLocaleString('es-AR')}` 
+                            : 'Gratis'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Total */}
+                  <div className="border-t border-gray-300 pt-4 mt-4">
+                    <div className="flex justify-between text-lg font-bold">
+                      <span className="text-gray-900">Total:</span>
+                      <span className="text-gray-900">AR$ {orderDetails.totalArs.toLocaleString('es-AR')}</span>
+                    </div>
                   </div>
-                )}
-                <div className="border-t border-gray-300 pt-4 mt-4">
-                  <div className="flex justify-between text-lg font-bold">
-                    <span className="text-gray-900">Total:</span>
-                    <span className="text-gray-900">AR$ {orderDetails.totalArs.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  </div>
-                  <p className="text-sm text-gray-500 text-right mt-1">
-                    USD ${orderDetails.totalUsd.toFixed(2)}
-                  </p>
                 </div>
               </div>
 
@@ -183,6 +238,23 @@ function ThankYouContent() {
                       <p className="text-sm text-gray-900">{orderDetails.customer.address}</p>
                     </div>
                   </div>
+                  
+                  {/* Comments */}
+                  {orderDetails.comments && (
+                    <div className="pt-3 border-t border-gray-300">
+                      <div className="flex items-start gap-3">
+                        <svg className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                        </svg>
+                        <div className="flex-1">
+                          <p className="text-xs text-gray-500">Comentarios</p>
+                          <p className="text-sm text-gray-900 italic mt-1 p-3 bg-white rounded border border-gray-200">
+                            &ldquo;{orderDetails.comments}&rdquo;
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

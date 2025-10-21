@@ -3,6 +3,7 @@ import './globals.css'
 import { Providers } from './providers'
 import Header from '@/components/Header'
 import Cart from '@/components/Cart'
+import { Analytics } from '@vercel/analytics/next'
 
 export const metadata: Metadata = {
   title: 'Pokemon TCG Argentina - Cartas Pokemon Online',
@@ -64,6 +65,7 @@ export default function RootLayout({
           {children}
           <Cart />
         </Providers>
+        <Analytics />
       </body>
     </html>
   )

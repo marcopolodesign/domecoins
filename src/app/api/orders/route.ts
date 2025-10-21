@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Validate required fields
-    const { customer, items, itemsInStock, itemsToOrder, totalArs, totalUsd } = body;
+    const { customer, items, itemsInStock, itemsToOrder, totalArs, totalUsd, shippingMethod, shippingCost, comments } = body;
     
     if (!customer || !items || items.length === 0) {
       return NextResponse.json(
@@ -34,6 +34,14 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    
+    console.log('[OrdersAPI] Creating order with data:', {
+      customer,
+      itemsCount: items.length,
+      shippingMethod,
+      shippingCost,
+      comments,
+    });
     
     // Create order
     const order = await createOrder({
@@ -44,6 +52,9 @@ export async function POST(request: NextRequest) {
       itemsToOrder: itemsToOrder || 0,
       totalArs,
       totalUsd,
+      shippingMethod,
+      shippingCost,
+      comments,
       paymentMethod: null,
       paymentLink: null,
       paymentStatus: 'pending',

@@ -3,6 +3,7 @@
 import { TrashIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
 import Link from 'next/link'
+import { MAX_QUANTITY_PER_VARIANT } from '@/store/cartSlice'
 
 interface CartItemCardProps {
   card: any // Same as ProductCard - accepts both PokemonCard and unified Card types
@@ -32,8 +33,10 @@ export default function CartItemCard({
   // Get card number - handle both TCGPlayer and PokemonCard structures
   const cardNumber = card.setId || card.number || 'N/A'
 
+  const isAtMaxQuantity = quantity >= MAX_QUANTITY_PER_VARIANT
+
   const handleIncrement = () => {
-    if (onUpdateQuantity) {
+    if (onUpdateQuantity && !isAtMaxQuantity) {
       onUpdateQuantity(card.id, quantity + 1)
     }
   }
@@ -62,8 +65,8 @@ export default function CartItemCard({
         <div>
           {/* Card Name and Price */}
           <div className="flex justify-between text-base font-medium text-gray-900">
-            <h3>
-              <Link href={`/cards/${card.id}`} onClick={onClose}>
+            <h3 className="text-lg font-semibold">
+              <Link href={`/cards/${card.productId || card.id}`} onClick={onClose}>
                 {card.name}
               </Link>
             </h3>
@@ -102,32 +105,43 @@ export default function CartItemCard({
         {/* Quantity and Actions */}
         <div className="flex flex-1 items-end justify-between text-sm">
           {/* Quantity Display/Controls */}
-          <div className="flex items-center gap-2">
-            {quantity > 1 && onUpdateQuantity ? (
-              // Show increment/decrement controls if quantity > 1
-              <>
-                <button
-                  type="button"
-                  onClick={handleDecrement}
-                  className="w-6 h-6 flex items-center justify-center rounded border border-gray-300 hover:bg-gray-100 transition-colors"
-                >
-                  -
-                </button>
-                <span className="text-gray-700 font-medium min-w-[20px] text-center">
-                  {quantity}
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              {onUpdateQuantity ? (
+                // Show increment/decrement controls
+                <>
+                  <button
+                    type="button"
+                    onClick={handleDecrement}
+                    disabled={quantity <= 1}
+                    className="w-6 h-6 flex items-center justify-center rounded border border-gray-300 hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    -
+                  </button>
+                  <span className="text-gray-700 font-medium min-w-[20px] text-center">
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleIncrement}
+                    disabled={isAtMaxQuantity}
+                    className="w-6 h-6 flex items-center justify-center rounded border border-gray-300 hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={isAtMaxQuantity ? `Máximo ${MAX_QUANTITY_PER_VARIANT} por variante` : undefined}
+                  >
+                    +
+                  </button>
+                </>
+              ) : (
+                // Just show quantity if controls are disabled
+                <span className="text-gray-500 text-sm">
+                  Cantidad: {quantity}
                 </span>
-                <button
-                  type="button"
-                  onClick={handleIncrement}
-                  className="w-6 h-6 flex items-center justify-center rounded border border-gray-300 hover:bg-gray-100 transition-colors"
-                >
-                  +
-                </button>
-              </>
-            ) : (
-              // Just show quantity if it's 1
-              <span className="text-gray-500 text-sm">
-                Cantidad: {quantity}
+              )}
+            </div>
+            {/* Max quantity warning */}
+            {isAtMaxQuantity && (
+              <span className="text-xs text-orange-600">
+                Máx. {MAX_QUANTITY_PER_VARIANT}/variante
               </span>
             )}
           </div>
