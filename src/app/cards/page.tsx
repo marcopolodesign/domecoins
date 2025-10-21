@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, Suspense, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import ProductCard from '@/components/ProductCard'
@@ -13,6 +13,7 @@ import { fetchExchangeRate } from '@/store/currencySlice'
 
 function CardsPageContent() {
   const dispatch = useDispatch<AppDispatch>()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [clientSideFilter, setClientSideFilter] = useState('')
   const [sortOrder, setSortOrder] = useState('Precio: Menor a mayor')
@@ -60,6 +61,9 @@ function CardsPageContent() {
     const fetchInStockInventory = async () => {
       // Only show ONLY in-stock cards if inStock=true is explicitly set
       const shouldShowOnlyInStock = inStockParam === 'true'
+      
+      // Sync state with URL parameter
+      setShowOnlyInStock(shouldShowOnlyInStock)
       
       if (shouldShowOnlyInStock) {
         console.log('[CardsPage] Fetching in-stock inventory...')
@@ -328,7 +332,16 @@ function CardsPageContent() {
 
               {/* "En Stock" Toggle */}
               <button
-                onClick={() => setShowOnlyInStock(!showOnlyInStock)}
+                onClick={() => {
+                  const inStockParam = searchParams.get('inStock')
+                  if (inStockParam === 'true') {
+                    // If already showing in-stock, go back to all cards
+                    router.push('/cards')
+                  } else {
+                    // Navigate to in-stock view
+                    router.push('/cards?inStock=true')
+                  }
+                }}
                 className={`flex items-center gap-2 py-3 px-4 rounded-md font-interphases text-base font-medium transition-all ${
                   showOnlyInStock
                     ? 'bg-green-600 text-white shadow-md'

@@ -23,10 +23,9 @@ if (typeof window !== 'undefined') {
 }
 
 const navigation = [
-  { name: 'Cartas', href: '/cards' },
+  { name: 'Cartas', href: '/cards?inStock=true' },
   // { name: 'Accesorios', href: '/rarezas' },
   // { name: 'Sellados', href: '/rarezas' },
-  { name: 'En stock', href: '/cards?inStock=true' },
 ]
 
 // Custom Pokedex/Card icon with badge
