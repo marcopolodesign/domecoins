@@ -101,10 +101,18 @@ export default function Header() {
     dispatch(toggleCart())
   }
 
-  // Determine text colors based on page and scroll state
-  const textColor = (isHomePage && !isScrolled) ? 'text-white' : 'text-gray-900'
-  const logoTextColor = (isHomePage && !isScrolled) ? 'text-white' : 'text-gray-900'
-  const hoverColor = (isHomePage && !isScrolled) ? 'hover:text-white/80' : 'hover:text-blue-600'
+  // Listen for cart toggle events from footer
+  useEffect(() => {
+    const handleToggleCart = () => {
+      dispatch(toggleCart())
+    }
+
+    window.addEventListener('toggleCart', handleToggleCart)
+    
+    return () => {
+      window.removeEventListener('toggleCart', handleToggleCart)
+    }
+  }, [dispatch])
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50">
@@ -135,12 +143,18 @@ export default function Header() {
       {/* Header Navigation */}
       <Disclosure as="nav" ref={headerRef} className={`
         transition-all duration-300 ease-out rounded-br-2xl rounded-bl-2xl max-w-7xl mx-auto px-4 sm:px-6 lg:px-8
-        ${(isHomePage && !isScrolled) 
+        ${(isHomePage && !isScrolled && !open) 
           ? 'bg-transparent' 
           : 'bg-white/70 backdrop-blur-md border-b border-gray-200'
         }
       `}>
-        {({ open }) => (
+        {({ open }) => {
+          // Determine text colors based on page, scroll state, and menu state
+          const textColor = (isHomePage && !isScrolled && !open) ? 'text-white' : 'text-gray-900'
+          const logoTextColor = (isHomePage && !isScrolled && !open) ? 'text-white' : 'text-gray-900'
+          const hoverColor = (isHomePage && !isScrolled && !open) ? 'hover:text-white/80' : 'hover:text-blue-600'
+
+          return (
           <>
             <div className="">
               <div className="flex justify-between items-center h-20">
@@ -243,7 +257,8 @@ export default function Header() {
               </div>
             </Disclosure.Panel>
           </>
-        )}
+          )
+        }}
       </Disclosure>
 
       {/* Mobile Search Modal */}
