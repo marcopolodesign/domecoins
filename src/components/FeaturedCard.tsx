@@ -1,6 +1,10 @@
 'use client';
 
 import Image from 'next/image';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
+import { calculateFinalPrice } from '@/utils/priceFormulas';
+import { getRoundedArsPrice } from '@/utils/priceFormatting';
 
 interface FeaturedCardProps {
   productId: number;
@@ -23,6 +27,13 @@ export default function FeaturedCard({
   rarityName,
 }: FeaturedCardProps) {
   const cardNumber = productId.toString().slice(-3);
+  const dolarBlueRate = useSelector((state: RootState) => state.currency.dolarBlueRate);
+
+  // Calculate retail price using the formula (same as ProductCard)
+  const retailPrice = calculateFinalPrice(rarityName, marketPrice);
+  
+  // Convert to ARS and round
+  const arsPrice = getRoundedArsPrice(retailPrice * dolarBlueRate);
 
   return (
     <div className="w-full md:w-[30%] bg-white rounded-lg hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-200 h-auto lg:h-[280px] group">
@@ -85,7 +96,7 @@ export default function FeaturedCard({
             
             {/* Price */}
             <div className="text-3xl font-thunder font-bold text-gray-900">
-              ${marketPrice.toFixed(3)}
+              AR$ {arsPrice.toLocaleString('es-AR')}
             </div>
           </div>
         </div>

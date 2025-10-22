@@ -9,9 +9,10 @@ import { useRouter } from 'next/navigation'
 import { 
   ShoppingCartIcon
 } from '@heroicons/react/24/outline'
-import { addToCart, openCart } from '@/store/cartSlice'
+import { addToCart, openCart, MAX_QUANTITY_PER_VARIANT } from '@/store/cartSlice'
 import { RootState } from '@/store'
 import toast from 'react-hot-toast'
+import { getRoundedArsPrice } from '@/utils/priceFormatting'
 
 interface ProductCardProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,6 +35,7 @@ export default function ProductCard({
   const [isLoading, setIsLoading] = useState(false)
   
   const dolarBlueRate = useSelector((state: RootState) => state.currency.dolarBlueRate)
+  const cartItems = useSelector((state: RootState) => state.cart.items)
 
   // Extract price - works with both card formats
   const getPrice = () => {
@@ -68,7 +70,7 @@ export default function ProductCard({
   }
 
   const usdPrice = getPrice()
-  const arsPrice = usdPrice ? usdPrice * dolarBlueRate : null
+  const arsPrice = usdPrice ? getRoundedArsPrice(usdPrice * dolarBlueRate) : null
   
   // Log pricing for debugging
   if (usdPrice) {
@@ -89,11 +91,30 @@ export default function ProductCard({
       return
     }
 
+    // Get the printing variant (featured/primary variant from TCGPlayer)
+    const printing = card.printing || 'Normal';
+    
+    // Create unique ID based on productId AND printing to differentiate variants
+    const productId = card.productId || card.id;
+    const uniqueId = `${productId}-${printing.toLowerCase().replace(/\s+/g, '-')}`;
+    
+    // Check if cart already has 3 of this variant
+    const existingItem = cartItems.find(item => item.card.id === uniqueId);
+    if (existingItem && existingItem.quantity >= MAX_QUANTITY_PER_VARIANT) {
+      toast.error('Ya tenés el máximo de 3 variantes de este producto en tu carrito');
+      return;
+    }
+
     setIsLoading(true)
     
     try {
       dispatch(addToCart({
-        card,
+        card: {
+          ...card,
+          id: uniqueId, // Unique per printing variant
+          printing: printing, // Ensure printing is explicitly set
+          productId: productId, // Preserve numeric productId for navigation
+        },
         priceUsd: usdPrice,
         priceArs: arsPrice!,
         inStock: card.inStock ?? true, // Default to true if not specified
@@ -224,9 +245,8 @@ export default function ProductCard({
       </div>
 
       {/* Full-width Add to cart button at bottom */}
-      {/* TODO: Re-enable when inventory system is ready */}
-      {false && showAddToCart && usdPrice && (
-        <div className="border-t border-gray-100 rounded-bl-lg rounded-br-lg -mx-4 -mb-4">
+      {showAddToCart && usdPrice && (
+        <div className="border-t border-gray-100 rounded-bl-lg rounded-br-lg -mx-4 -mb-4 mt-4">
           <button
             onClick={handleAddToCart}
             disabled={isLoading}

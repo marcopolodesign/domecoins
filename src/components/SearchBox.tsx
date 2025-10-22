@@ -48,7 +48,7 @@ export default function SearchBox({
     // Large hero version
     return (
       <form onSubmit={handleSubmit} className="w-full max-w-4xl mx-auto">
-        <div className="flex items-center bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
+        <div className="flex items-center bg-white rounded-full md:rounded-2xl shadow-lg overflow-visible md:overflow-hidden border border-gray-200">
           <div className="pl-6 flex items-center pointer-events-none">
             <MagnifyingGlassIcon className="h-6 w-6 text-gray-400" />
           </div>
@@ -58,13 +58,20 @@ export default function SearchBox({
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder={placeholder}
-            className="flex-1 px-4 py-5 text-lg border-0 focus:ring-0 focus:outline-none"
+            className="flex-1 px-4 py-5 text-lg border-0 focus:ring-0 focus:outline-none rounded-full md:rounded-none"
           />
           <button
             type="submit"
-            className="px-8 py-5 bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors duration-200"
+            className="hidden md:inline-flex px-8 py-5 bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors duration-200"
           >
             Buscar
+          </button>
+          {/* Mobile: Icon button (circle) */}
+          <button
+            type="submit"
+            className="md:hidden mr-2 w-12 h-12 flex items-center justify-center bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors duration-200 shadow-lg"
+          >
+            <MagnifyingGlassIcon className="h-5 w-5" />
           </button>
         </div>
       </form>

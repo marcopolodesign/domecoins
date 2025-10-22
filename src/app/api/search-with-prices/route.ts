@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchTCGPlayerPrices, fetchProductDetails } from '@/lib/tcgplayer-price-scraper';
-import { getInventory } from '@/lib/kv';
+import { getInventory, getBlacklistCards } from '@/lib/kv';
 import { calculateFinalPrice } from '@/utils/priceFormulas';
 
 /**
@@ -24,6 +24,15 @@ export async function POST(request: NextRequest) {
     console.log(`[SearchWithPrices POST] Fetching ${productIds.length} specific products for in-stock view`);
     console.log(`[SearchWithPrices POST] Product IDs:`, productIds.slice(0, 10), '...');
     
+    // Get blacklist
+    let blacklist: string[] = [];
+    try {
+      blacklist = await getBlacklistCards();
+      console.log(`[SearchWithPrices POST] Fetched ${blacklist.length} blacklisted cards`);
+    } catch (error) {
+      console.error('[SearchWithPrices POST] Error fetching blacklist:', error);
+    }
+
     // Fetch each product by ID
     const productPromises = productIds.map(id => fetchProductDetails(parseInt(id, 10)));
     const products = await Promise.all(productPromises);
@@ -63,13 +72,29 @@ export async function POST(request: NextRequest) {
         };
       });
     
-    console.log(`[SearchWithPrices POST] Successfully loaded ${enrichedCards.length} in-stock cards`);
+    // Filter out blacklisted cards and "Code Card" rarity
+    const filteredCards = enrichedCards.filter(card => {
+      const productId = card.productId.toString();
+      const isBlacklisted = blacklist.includes(productId);
+      const isCodeCard = card.rarity && card.rarity.toLowerCase().includes('code card');
+      
+      if (isBlacklisted) {
+        console.log(`[SearchWithPrices POST] Filtering blacklisted card: ${card.name} (${productId})`);
+      }
+      if (isCodeCard) {
+        console.log(`[SearchWithPrices POST] Filtering code card: ${card.name}`);
+      }
+      
+      return !isBlacklisted && !isCodeCard;
+    });
+    
+    console.log(`[SearchWithPrices POST] Successfully loaded ${filteredCards.length} in-stock cards (filtered ${enrichedCards.length - filteredCards.length})`);
     
     return NextResponse.json({
-      results: enrichedCards,
-      totalResults: enrichedCards.length,
+      results: filteredCards,
+      totalResults: filteredCards.length,
       page: 1,
-      pageSize: enrichedCards.length,
+      pageSize: filteredCards.length,
     });
     
   } catch (error: any) {
@@ -105,22 +130,35 @@ export async function GET(request: NextRequest) {
 
     console.log(`[SearchWithPrices] Got ${tcgResults.length} results from TCGPlayer (${totalAvailable} total available)`);
 
-    // Get inventory for all product IDs
-    const productIds = tcgResults.map(r => r.productId.toString());
-    let inventoryMap: Record<string, number> = {};
+    // Get inventory for all product IDs (need to check all variants)
+    let fullInventory: Record<string, number> = {};
     
     try {
-      // Fetch inventory directly from KV
-      inventoryMap = await getInventory(productIds);
-      console.log('[SearchWithPrices] Fetched inventory for', productIds.length, 'products');
+      // Fetch ALL inventory from KV to check variants
+      fullInventory = await getInventory();
+      console.log('[SearchWithPrices] Fetched full inventory');
     } catch (error) {
       console.error('[SearchWithPrices] Error fetching inventory from KV:', error);
     }
 
+    // Get blacklist
+    let blacklist: string[] = [];
+    try {
+      blacklist = await getBlacklistCards();
+      console.log(`[SearchWithPrices] Fetched ${blacklist.length} blacklisted cards`);
+    } catch (error) {
+      console.error('[SearchWithPrices] Error fetching blacklist:', error);
+    }
+
     // Convert TCGPlayer results to our card format
     const enrichedCards = tcgResults.map((priceData, index) => {
-      const stock = inventoryMap[priceData.productId.toString()] || 0;
-      const inStock = stock > 0;
+      // Check if ANY variant of this product is in stock
+      const productId = priceData.productId.toString();
+      const productVariants = Object.keys(fullInventory).filter(key => 
+        key.startsWith(`${productId}:`)
+      );
+      const totalStock = productVariants.reduce((sum, key) => sum + (fullInventory[key] || 0), 0);
+      const inStock = totalStock > 0;
       
       // Calculate final retail price using formula
       const rarity = priceData.rarity || 'Unknown';
@@ -159,7 +197,7 @@ export async function GET(request: NextRequest) {
         hp: null,
         nationalPokedexNumbers: [],
         // Stock information
-        stock,
+        stock: totalStock,
         inStock,
         // Printing information
         printing: priceData.printing,
@@ -177,12 +215,30 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // Filter out blacklisted cards and "Code Card" rarity
+    const filteredCards = enrichedCards.filter(card => {
+      const productId = card.productId.toString();
+      const isBlacklisted = blacklist.includes(productId);
+      const isCodeCard = card.rarity && card.rarity.toLowerCase().includes('code card');
+      
+      if (isBlacklisted) {
+        console.log(`[SearchWithPrices] Filtering blacklisted card: ${card.name} (${productId})`);
+      }
+      if (isCodeCard) {
+        console.log(`[SearchWithPrices] Filtering code card: ${card.name}`);
+      }
+      
+      return !isBlacklisted && !isCodeCard;
+    });
+
+    console.log(`[SearchWithPrices] Filtered ${enrichedCards.length - filteredCards.length} cards (blacklist + code cards)`);
+
     return NextResponse.json({
-      items: enrichedCards,
+      items: filteredCards,
       total: totalAvailable, // Total cards available across all pages
       page,
       pageSize,
-      count: enrichedCards.length, // Cards returned in this response
+      count: filteredCards.length, // Cards returned in this response
       totalCount: totalAvailable, // Total cards available for pagination
       providers: ['tcgplayer'],
       games: [{ id: "pokemon", name: "Pokémon" }],

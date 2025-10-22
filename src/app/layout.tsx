@@ -2,7 +2,9 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { Providers } from './providers'
 import Header from '@/components/Header'
+import Footer from '@/components/Footer'
 import Cart from '@/components/Cart'
+import { Analytics } from '@vercel/analytics/next'
 
 export const metadata: Metadata = {
   title: 'Pokemon TCG Argentina - Cartas Pokemon Online',
@@ -58,12 +60,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body className="antialiased bg-gray-50">
+      <body className="antialiased bg-gray-50 flex flex-col min-h-screen">
         <Providers>
           <Header />
-          {children}
+          <main className="flex-1">
+            {children}
+          </main>
+          <Footer />
           <Cart />
         </Providers>
+        <Analytics />
       </body>
     </html>
   )

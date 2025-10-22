@@ -3,17 +3,20 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store';
-import { addToCart, openCart } from '@/store/cartSlice';
+import { addToCart, openCart, MAX_QUANTITY_PER_VARIANT } from '@/store/cartSlice';
 import { ShoppingCartIcon, ArrowLeftIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { TCGPlayerPrice, TCGPlayerVariant } from '@/lib/tcgplayer-price-scraper';
 import { getTypeGradient } from '@/utils/pokemonTypeGradients';
 import VanillaTilt from 'vanilla-tilt';
+import { getRoundedArsPrice } from '@/utils/priceFormatting';
+import toast from 'react-hot-toast';
 
 export default function CardDetailPage() {
   const params = useParams();
   const router = useRouter();
   const dispatch = useAppDispatch();
   const dolarBlueRate = useAppSelector((state) => state.currency.dolarBlueRate);
+  const cartItems = useAppSelector((state) => state.cart.items);
   
   const [card, setCard] = useState<TCGPlayerPrice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,18 +97,25 @@ export default function CardDetailPage() {
   const formatPrice = (priceUSD?: number) => {
     if (!priceUSD) return 'N/A';
     
-    // Always show ARS price using exchange rate
-    const priceARS = priceUSD * dolarBlueRate;
+    // Always show ARS price using exchange rate with rounding
+    const priceARS = getRoundedArsPrice(priceUSD * dolarBlueRate);
     return `AR$ ${priceARS.toLocaleString('es-AR', { 
       minimumFractionDigits: 0, 
       maximumFractionDigits: 0 
     })}`;
   };
 
-  // Clean HTML tags from text (e.g., <br>, <br/>, etc.)
+  // Clean HTML tags from text (e.g., <br>, <br/>, <em>, etc.)
   const cleanText = (text: string) => {
     if (!text) return text;
-    return text.replace(/<br\s*\/?>/gi, ' ').replace(/\s+/g, ' ').trim();
+    return text
+      .replace(/<br\s*\/?>/gi, ' ')
+      .replace(/<\/?em>/gi, '')
+      .replace(/<\/?i>/gi, '')
+      .replace(/<\/?b>/gi, '')
+      .replace(/<\/?strong>/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   };
   
   const handleAddToCart = (variant: any) => {
@@ -116,6 +126,13 @@ export default function CardDetailPage() {
     
     // Create unique ID based on productId AND printing to differentiate variants
     const uniqueId = `${card.productId}-${variant.printing.toLowerCase().replace(/\s+/g, '-')}`;
+    
+    // Check if cart already has 3 of this variant
+    const existingItem = cartItems.find(item => item.card.id === uniqueId);
+    if (existingItem && existingItem.quantity >= MAX_QUANTITY_PER_VARIANT) {
+      toast.error('Ya tenés el máximo de 3 variantes de este producto en tu carrito');
+      return;
+    }
     
     dispatch(addToCart({
       card: {
@@ -137,10 +154,11 @@ export default function CardDetailPage() {
         setId: card.cardNumber || 'N/A',
         inStock: variant.inStock,
         printing: variant.printing, // Store printing for cart display
+        productId: card.productId, // Preserve numeric productId for navigation
       } as any,
       quantity: 1,
       priceUsd: price,
-      priceArs: price * dolarBlueRate,
+      priceArs: getRoundedArsPrice(price * dolarBlueRate),
       inStock: variant.inStock,
     }));
     
@@ -256,6 +274,12 @@ export default function CardDetailPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-gray-500 font-interphases font-semibold">Rarity:</span>
                     <span className="text-gray-800 font-interphases capitalize">{card.rarity}</span>
+                  </div>
+                )}
+                {(card.customAttributes as any)?.artist && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500 font-interphases font-semibold">Artist:</span>
+                    <span className="text-gray-800 font-interphases">{(card.customAttributes as any).artist}</span>
                   </div>
                 )}
               </div>

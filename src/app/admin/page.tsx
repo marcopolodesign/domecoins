@@ -29,6 +29,13 @@ export default function AdminPage() {
   const [featuredSuccess, setFeaturedSuccess] = useState('');
   const [featuredStats, setFeaturedStats] = useState<{totalCards: number} | null>(null);
 
+  // Blacklist management
+  const [blacklistCsvFile, setBlacklistCsvFile] = useState<File | null>(null);
+  const [blacklistLoading, setBlacklistLoading] = useState(false);
+  const [blacklistError, setBlacklistError] = useState('');
+  const [blacklistSuccess, setBlacklistSuccess] = useState('');
+  const [blacklistStats, setBlacklistStats] = useState<{totalCards: number} | null>(null);
+
   // Check if already authenticated
   useEffect(() => {
     const authToken = sessionStorage.getItem('admin_auth');
@@ -37,6 +44,7 @@ export default function AdminPage() {
       fetchCurrentPrice();
       fetchInventoryStats();
       fetchFeaturedStats();
+      fetchBlacklistStats();
     }
   }, []);
 
@@ -262,6 +270,83 @@ export default function AdminPage() {
     } catch (err) {
       setFeaturedError('Error al cargar el archivo');
       setFeaturedLoading(false);
+    }
+  };
+
+  const fetchBlacklistStats = async () => {
+    try {
+      const response = await fetch('/api/blacklist');
+      if (response.ok) {
+        const data = await response.json();
+        setBlacklistStats({ totalCards: data.totalCards || 0 });
+      }
+    } catch (err) {
+      console.error('Error fetching blacklist stats:', err);
+    }
+  };
+
+  const handleBlacklistFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setBlacklistCsvFile(e.target.files[0]);
+      setBlacklistError('');
+      setBlacklistSuccess('');
+    }
+  };
+
+  const handleBlacklistUpload = async () => {
+    if (!blacklistCsvFile) {
+      setBlacklistError('Por favor selecciona un archivo CSV');
+      return;
+    }
+
+    setBlacklistLoading(true);
+    setBlacklistError('');
+    setBlacklistSuccess('');
+
+    try {
+      const reader = new FileReader();
+
+      reader.onload = async (e) => {
+        try {
+          const csvContent = e.target?.result as string;
+          
+          const response = await fetch('/api/blacklist', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'text/csv',
+            },
+            body: csvContent,
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setBlacklistSuccess(`✅ ${data.count} cartas bloqueadas cargadas exitosamente`);
+            setBlacklistCsvFile(null);
+            fetchBlacklistStats();
+            
+            // Reset file input
+            const fileInput = document.getElementById('blacklist-csv-upload') as HTMLInputElement;
+            if (fileInput) fileInput.value = '';
+          } else {
+            const data = await response.json();
+            setBlacklistError(data.error || 'Error al cargar la lista negra');
+          }
+        } catch (err) {
+          setBlacklistError('Error al procesar el archivo CSV');
+        } finally {
+          setBlacklistLoading(false);
+        }
+      };
+
+      reader.onerror = () => {
+        setBlacklistError('Error al leer el archivo');
+        setBlacklistLoading(false);
+      };
+
+      reader.readAsText(blacklistCsvFile);
+    } catch (err) {
+      setBlacklistError('Error al cargar el archivo');
+      setBlacklistLoading(false);
     }
   };
 
@@ -580,6 +665,84 @@ export default function AdminPage() {
               <li>• Las cartas se distribuyen automáticamente en los carruseles del homepage sin repetirse.</li>
               <li>• Las cartas se cargan completamente con cada upload (sobrescribe las anteriores).</li>
               <li>• Se recomienda tener al menos 20-30 cartas para una buena distribución.</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Blacklist Section */}
+        <div className="mt-6 bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h3 className="text-lg leading-6 font-medium text-gray-900 font-thunder mb-6">
+              Lista Negra de Cartas (Blacklist)
+            </h3>
+
+            {blacklistStats && (
+              <div className="mb-6 p-4 bg-red-50 rounded-md">
+                <p className="text-sm text-red-900">
+                  <span className="font-semibold">Cartas bloqueadas:</span> {blacklistStats.totalCards}
+                </p>
+              </div>
+            )}
+
+            <form onSubmit={(e) => { e.preventDefault(); handleBlacklistUpload(); }} className="space-y-4">
+              <div>
+                <label htmlFor="blacklist-csv-upload" className="block text-sm font-medium text-gray-700 mb-2">
+                  Cargar Archivo CSV de Cartas Bloqueadas
+                </label>
+                <input
+                  type="file"
+                  id="blacklist-csv-upload"
+                  accept=".csv"
+                  onChange={handleBlacklistFileChange}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                  required
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                  Formato esperado: CSV con columna TCGplayer Id
+                </p>
+              </div>
+
+              {blacklistCsvFile && (
+                <div className="p-3 bg-red-50 rounded-md">
+                  <p className="text-sm text-red-900">
+                    📄 Archivo seleccionado: <span className="font-semibold">{blacklistCsvFile.name}</span>
+                  </p>
+                </div>
+              )}
+
+              {blacklistError && (
+                <div className="rounded-md bg-red-50 p-4">
+                  <p className="text-sm text-red-800">{blacklistError}</p>
+                </div>
+              )}
+
+              {blacklistSuccess && (
+                <div className="rounded-md bg-green-50 p-4">
+                  <p className="text-sm text-green-800">{blacklistSuccess}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={blacklistLoading || !blacklistCsvFile}
+                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {blacklistLoading ? 'Cargando...' : 'Subir Lista Negra'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div className="mt-6 bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h4 className="text-sm font-medium text-gray-900 mb-4">Información de Lista Negra</h4>
+            <ul className="text-sm text-gray-600 space-y-2">
+              <li>• El archivo CSV debe contener la columna [TCGplayer Id].</li>
+              <li>• Las cartas bloqueadas no aparecerán en búsquedas ni en el catálogo.</li>
+              <li>• La lista se carga completamente con cada upload (sobrescribe la anterior).</li>
+              <li>• Además, las cartas con rareza "Code Card" se filtran automáticamente.</li>
             </ul>
           </div>
         </div>

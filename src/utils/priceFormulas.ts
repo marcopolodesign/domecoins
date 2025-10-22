@@ -64,6 +64,7 @@ export function calculatePriceWithDetails(rarity: string, marketPrice: number): 
   // GRUPO 4: Premium con escala completa (5 niveles)
   const premiumRarities: Record<string, number> = {
     'Ultra Rare': 1.5,
+    'Double Rare': 1.5,
     'Secret Rare': 2,
     'Illustration Rare': 2.5,
     'Shiny Holo Rare': 2,
@@ -202,6 +203,7 @@ export function getSupportedRarities(): string[] {
     'Promo',
     // Group 4
     'Ultra Rare',
+    'Double Rare',
     'Secret Rare',
     'Illustration Rare',
     'Shiny Holo Rare',
@@ -236,6 +238,7 @@ export function getMinimumPrice(rarity: string): number | null {
     'Classic Collection': 2,
     'Promo': 1,
     'Ultra Rare': 1.5,
+    'Double Rare': 1.5,
     'Secret Rare': 2,
     'Illustration Rare': 2.5,
     'Shiny Holo Rare': 2,

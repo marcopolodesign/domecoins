@@ -23,18 +23,25 @@ export default function CheckoutPage() {
     phone: '',
     email: '',
     address: '',
+    comments: '',
+    shipping: 'pickup', // 'pickup' or 'delivery'
   })
 
   // Calculate stock separation
   const itemsInStock = items.filter(item => item.inStock).length
   const itemsToOrder = items.filter(item => !item.inStock).length
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     })
   }
+  
+  // Calculate shipping cost
+  const SHIPPING_COST = 15000
+  const shippingCost = formData.shipping === 'delivery' ? SHIPPING_COST : 0
+  const totalWithShipping = total.ars + shippingCost
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -57,14 +64,19 @@ export default function CheckoutPage() {
           imageUrl: (item.card as any).imageUrl || (item.card as any).images?.large || (item.card as any).images?.small || '/placeholder-card.svg',
           setName: (item.card as any).categoryName || (item.card as any).set?.name || 'Unknown Set',
           rarity: (item.card as any).rarity || 'Unknown',
+          printing: (item.card as any).printing || 'Normal',
+          quantity: item.quantity,
           priceUsd: item.priceUsd,
           priceArs: item.priceArs,
           inStock: item.inStock,
         })),
         itemsInStock,
         itemsToOrder,
-        totalArs: total.ars,
+        totalArs: totalWithShipping,
         totalUsd: total.usd,
+        shippingMethod: formData.shipping,
+        shippingCost: shippingCost,
+        comments: formData.comments,
       }
 
       const response = await fetch('/api/orders', {
@@ -222,6 +234,49 @@ export default function CheckoutPage() {
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   />
                 </div>
+
+                {/* Shipping Method */}
+                <div className="sm:col-span-2">
+                  <label htmlFor="shipping" className="block text-sm font-medium text-gray-700">
+                    Método de Envío *
+                  </label>
+                  <select
+                    name="shipping"
+                    id="shipping"
+                    required
+                    value={formData.shipping}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  >
+                    <option value="pickup">Retiro por warehouse - Gratis</option>
+                    <option value="delivery">Envío a domicilio - AR$ {SHIPPING_COST.toLocaleString('es-AR')}</option>
+                  </select>
+                  
+                  {/* Shipping Info */}
+                  <p className="mt-2 text-sm text-gray-600">
+                    {formData.shipping === 'pickup' ? (
+                      <span>📍 Retiro por zona de Puerto Madero</span>
+                    ) : (
+                      <span>🚚 Despachamos Envíos de 24 a 48hs una vez recibido el pago del pedido</span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Comments */}
+                <div className="sm:col-span-2">
+                  <label htmlFor="comments" className="block text-sm font-medium text-gray-700">
+                    Comentarios (Opcional)
+                  </label>
+                  <textarea
+                    name="comments"
+                    id="comments"
+                    rows={3}
+                    value={formData.comments}
+                    onChange={handleInputChange}
+                    placeholder="Dejanos un comentario sobre tu pedido..."
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
               </div>
             </div>
 
@@ -254,6 +309,8 @@ export default function CheckoutPage() {
                 {items.map((item) => {
                   const imageUrl = (item.card as any).imageUrl || (item.card as any).images?.large || (item.card as any).images?.small || '/placeholder-card.svg'
                   const setName = (item.card as any).categoryName || (item.card as any).set?.name || 'Unknown Set'
+                  const printing = (item.card as any).printing
+                  const itemTotal = item.priceArs * item.quantity
                   
                   return (
                     <div key={item.card.id} className="py-4 flex items-center gap-4">
@@ -268,29 +325,43 @@ export default function CheckoutPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">{item.card.name}</p>
                         <p className="text-xs text-gray-500">{setName}</p>
+                        {printing && (
+                          <p className="text-xs font-semibold text-blue-600 mt-0.5">{printing}</p>
+                        )}
+                        <p className="text-xs text-gray-600 mt-0.5">Cantidad: {item.quantity}</p>
                         {!item.inStock && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 mt-1">
                             A encargo
                           </span>
                         )}
                       </div>
-                      <div className="text-sm font-medium text-gray-900">
-                        AR$ {item.priceArs.toLocaleString('es-AR')}
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-900">
+                          AR$ {itemTotal.toLocaleString('es-AR')}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          ${item.priceArs.toLocaleString('es-AR')} × {item.quantity}
+                        </p>
                       </div>
                     </div>
                   )
                 })}
               </div>
 
-              {/* Total */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="flex justify-between text-base font-medium text-gray-900">
-                  <p>Total</p>
+              {/* Subtotal and Shipping */}
+              <div className="mt-6 pt-6 border-t border-gray-200 space-y-2">
+                <div className="flex justify-between text-sm text-gray-600">
+                  <p>Subtotal</p>
                   <p>AR$ {total.ars.toLocaleString('es-AR')}</p>
                 </div>
-                <p className="mt-0.5 text-sm text-gray-500">
-                  USD ${total.usd.toFixed(2)}
-                </p>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <p>Envío</p>
+                  <p>{shippingCost === 0 ? 'Gratis' : `AR$ ${shippingCost.toLocaleString('es-AR')}`}</p>
+                </div>
+                <div className="flex justify-between text-base font-medium text-gray-900 pt-2 border-t">
+                  <p>Total</p>
+                  <p>AR$ {totalWithShipping.toLocaleString('es-AR')}</p>
+                </div>
               </div>
             </div>
 
@@ -326,4 +397,5 @@ export default function CheckoutPage() {
     </div>
   )
 }
+
 

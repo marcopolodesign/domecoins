@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, Fragment } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useDispatch, useSelector } from 'react-redux'
-import { Disclosure } from '@headlessui/react'
+import { Disclosure, Dialog, Transition } from '@headlessui/react'
 import { 
   Bars3Icon,
   XMarkIcon,
   ExclamationTriangleIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
 import { RootState } from '@/store'
 import { toggleCart } from '@/store/cartSlice'
@@ -22,10 +23,9 @@ if (typeof window !== 'undefined') {
 }
 
 const navigation = [
-  { name: 'Cartas', href: '/cards' },
+  { name: 'Cartas', href: '/cards?inStock=true' },
   // { name: 'Accesorios', href: '/rarezas' },
   // { name: 'Sellados', href: '/rarezas' },
-  { name: 'En stock', href: '/cards?inStock=true' },
 ]
 
 // Custom Pokedex/Card icon with badge
@@ -58,6 +58,7 @@ export default function Header() {
   const headerRef = useRef<HTMLDivElement>(null)
   const noticesRef = useRef<HTMLDivElement>(null)
   const [isScrolled, setIsScrolled] = useState(false)
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false)
   
   const isHomePage = pathname === '/'
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0)
@@ -99,10 +100,18 @@ export default function Header() {
     dispatch(toggleCart())
   }
 
-  // Determine text colors based on page and scroll state
-  const textColor = (isHomePage && !isScrolled) ? 'text-white' : 'text-gray-900'
-  const logoTextColor = (isHomePage && !isScrolled) ? 'text-white' : 'text-gray-900'
-  const hoverColor = (isHomePage && !isScrolled) ? 'hover:text-white/80' : 'hover:text-blue-600'
+  // Listen for cart toggle events from footer
+  useEffect(() => {
+    const handleToggleCart = () => {
+      dispatch(toggleCart())
+    }
+
+    window.addEventListener('toggleCart', handleToggleCart)
+    
+    return () => {
+      window.removeEventListener('toggleCart', handleToggleCart)
+    }
+  }, [dispatch])
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50">
@@ -133,12 +142,18 @@ export default function Header() {
       {/* Header Navigation */}
       <Disclosure as="nav" ref={headerRef} className={`
         transition-all duration-300 ease-out rounded-br-2xl rounded-bl-2xl max-w-7xl mx-auto px-4 sm:px-6 lg:px-8
-        ${(isHomePage && !isScrolled) 
+        ${(isHomePage && !isScrolled && !open) 
           ? 'bg-transparent' 
           : 'bg-white/70 backdrop-blur-md border-b border-gray-200'
         }
       `}>
-        {({ open }) => (
+        {({ open }) => {
+          // Determine text colors based on page, scroll state, and menu state
+          const textColor = (isHomePage && !isScrolled && !open) ? 'text-white' : 'text-gray-900'
+          const logoTextColor = (isHomePage && !isScrolled && !open) ? 'text-white' : 'text-gray-900'
+          const hoverColor = (isHomePage && !isScrolled && !open) ? 'hover:text-white/80' : 'hover:text-blue-600'
+
+          return (
           <>
             <div className="">
               <div className="flex justify-between items-center h-20">
@@ -165,47 +180,46 @@ export default function Header() {
                   </Link>
                 </div>
 
-                {/* Center: Navigation or SearchBox */}
-                {!isHomePage && (
-                  // Other pages: Show search box in header
+                {/* Center: SearchBox (shown when scrolled on home, or always on other pages) */}
+                {(!isHomePage || isScrolled) && (
                   <div className="hidden md:block flex-1 max-w-2xl mx-8">
                     <SearchBox variant="header" />
                   </div>
                 )}
 
-                {/* Right side: Cart and User */}
-                <div className="flex items-center space-x-6">
+                {/* Right side: Navigation, Cart, Search */}
+                <div className="flex items-center space-x-4 md:space-x-6">
+                  {/* Navigation links - always visible on desktop */}
+                  <div className="hidden md:flex items-center space-x-8">
+                    {navigation.map((item) => (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        className={`${textColor} ${hoverColor} text-sm font-medium transition-colors duration-200`}
+                      >
+                        {item.name}
+                      </Link>
+                    ))}
+                  </div>
 
-                  {isHomePage && (
-                      // Home page: Show navigation links
-                      <div className="hidden md:flex items-center space-x-8 mr-8">
-                        {navigation.map((item) => (
-                          <Link
-                            key={item.name}
-                            href={item.href}
-                            className={`${textColor} ${hoverColor} text-sm font-medium transition-colors duration-200`}
-                          >
-                            {item.name}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
+                  {/* Mobile Search Button */}
+                  <button
+                    onClick={() => setIsMobileSearchOpen(true)}
+                    className={`md:hidden ${textColor} ${hoverColor} transition-colors duration-200`}
+                  >
+                    <MagnifyingGlassIcon className="h-6 w-6" />
+                  </button>
                     
-                  {/* Cart with total */}
+                  {/* Cart with total (hide price on mobile) */}
                   <button
                     onClick={handleCartClick}
                     className={`flex items-center space-x-2 ${textColor} ${hoverColor} transition-colors duration-200`}
                   >
                     <PokedexIcon count={totalItems} />
-                    <span className="text-lg font-semibold">
+                    <span className="hidden md:inline text-lg font-semibold">
                       ${cartTotal.ars.toFixed(2)}
                     </span>
                   </button>
-
-                  {/* User icon
-                  <button className={`${textColor} ${hoverColor} transition-colors duration-200`}>
-                    <UserCircleIcon className="h-8 w-8" />
-                  </button> */}
 
                   {/* Mobile menu button */}
                   <Disclosure.Button className={`md:hidden inline-flex items-center justify-center p-2 rounded-md ${textColor} hover:opacity-70 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500`}>
@@ -242,8 +256,108 @@ export default function Header() {
               </div>
             </Disclosure.Panel>
           </>
-        )}
+          )
+        }}
       </Disclosure>
+
+      {/* Mobile Search Modal */}
+      <Transition.Root show={isMobileSearchOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={setIsMobileSearchOpen}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-in-out duration-500"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in-out duration-500"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-hidden">
+            <div className="absolute inset-0 overflow-hidden">
+              <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-0 w-full">
+                <Transition.Child
+                  as={Fragment}
+                  enter="transform transition ease-in-out duration-500"
+                  enterFrom="translate-y-full"
+                  enterTo="translate-y-0"
+                  leave="transform transition ease-in-out duration-500"
+                  leaveFrom="translate-y-0"
+                  leaveTo="translate-y-full"
+                >
+                  <Dialog.Panel className="pointer-events-auto w-full">
+                    <div className="flex h-full flex-col bg-white shadow-xl">
+                      {/* Header */}
+                      <div className="flex items-center justify-between px-4 py-6 border-b border-gray-200">
+                        <Dialog.Title className="text-2xl font-medium text-gray-900">
+                          Buscar Cartas
+                        </Dialog.Title>
+                        <button
+                          type="button"
+                          className="relative -m-2 p-2 text-gray-400 hover:text-gray-500"
+                          onClick={() => setIsMobileSearchOpen(false)}
+                        >
+                          <span className="absolute -inset-0.5" />
+                          <span className="sr-only">Cerrar panel</span>
+                          <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                        </button>
+                      </div>
+
+                      {/* Search Box */}
+                      <div className="flex-1 px-4 py-6">
+                        <SearchBox 
+                          variant="header" 
+                          placeholder="Buscar cartas..." 
+                          onSearch={() => {
+                            setIsMobileSearchOpen(false)
+                            // Navigation is handled by SearchBox
+                          }}
+                        />
+                        
+                        {/* Search Tips */}
+                        <div className="mt-8">
+                          <h3 className="text-sm font-medium text-gray-900 mb-4">Sugerencias:</h3>
+                          <div className="space-y-2">
+                            <button
+                              onClick={() => {
+                                window.location.href = '/cards?search=Pikachu'
+                                setIsMobileSearchOpen(false)
+                              }}
+                              className="block w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                            >
+                              <p className="text-sm font-medium text-gray-900">Pikachu</p>
+                            </button>
+                            <button
+                              onClick={() => {
+                                window.location.href = '/cards?search=Charizard'
+                                setIsMobileSearchOpen(false)
+                              }}
+                              className="block w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                            >
+                              <p className="text-sm font-medium text-gray-900">Charizard</p>
+                            </button>
+                            <button
+                              onClick={() => {
+                                window.location.href = '/cards?inStock=true'
+                                setIsMobileSearchOpen(false)
+                              }}
+                              className="block w-full text-left px-4 py-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                            >
+                              <p className="text-sm font-medium text-green-900">📦 Ver Cartas en Stock</p>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Dialog.Panel>
+                </Transition.Child>
+              </div>
+            </div>
+          </div>
+        </Dialog>
+      </Transition.Root>
     </div>
   )
 }

@@ -5,6 +5,10 @@ import { useEffect, useState, useMemo } from 'react';
 import { ChevronRightIcon, SparklesIcon, TruckIcon, CreditCardIcon } from '@heroicons/react/24/outline';
 import SearchBox from '@/components/SearchBox';
 import ReusableCardsBlock from '@/components/ReusableCardsBlock';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
+import { calculateFinalPrice } from '@/utils/priceFormulas';
+import { getRoundedArsPrice } from '@/utils/priceFormatting';
 
 const features = [
   {
@@ -65,6 +69,9 @@ export default function HomePage() {
   const [carouselCards, setCarouselCards] = useState<TCGPlayerCard[]>([]);
   const [bestSellerCards, setBestSellerCards] = useState<TCGPlayerCard[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Get dollar rate for price calculations
+  const dolarBlueRate = useSelector((state: RootState) => state.currency.dolarBlueRate);
 
   // Memoize IDs to prevent unnecessary re-renders in ReusableCardsBlock
   const bestSellerIds = useMemo(() => 
@@ -256,6 +263,10 @@ export default function HomePage() {
                   const cardType = card.customAttributes?.cardType?.[0] || 'Pokemon';
                   const energyType = card.customAttributes?.energyType?.[0] || '';
                   
+                  // Calculate retail price with formula and convert to ARS (same as ProductCard)
+                  const retailPrice = calculateFinalPrice(card.rarityName, card.marketPrice);
+                  const arsPrice = getRoundedArsPrice(retailPrice * dolarBlueRate);
+                  
                   return (
                     <Link
                       key={card.productId}
@@ -285,7 +296,7 @@ export default function HomePage() {
                                   <p>{energyType || cardType}</p>
                                   <p>{card.rarityName}</p>
                                   <p>{card.setName}</p>
-                                  <p className="text-yellow-400 font-semibold">${card.marketPrice.toFixed(2)}</p>
+                                  <p className="text-yellow-400 font-semibold">AR$ {arsPrice.toLocaleString('es-AR')}</p>
                                 </div>
                               </div>
                             </div>
@@ -339,6 +350,10 @@ export default function HomePage() {
                 const cardType = card.customAttributes?.cardType?.[0] || 'Pokemon';
                 const energyType = card.customAttributes?.energyType?.[0] || '';
                 
+                // Calculate retail price with formula and convert to ARS (same as ProductCard)
+                const retailPrice = calculateFinalPrice(card.rarityName, card.marketPrice);
+                const arsPrice = getRoundedArsPrice(retailPrice * dolarBlueRate);
+                
                 return (
                   <Link
                     key={card.productId}
@@ -373,6 +388,7 @@ export default function HomePage() {
                                 <p>{energyType || cardType}</p>
                                 <p>{card.rarityName}</p>
                                 <p>{card.setName}</p>
+                                <p className="text-yellow-400 font-semibold text-lg mt-2">AR$ {arsPrice.toLocaleString('es-AR')}</p>
                               </div>
                             </div>
                           </div>
