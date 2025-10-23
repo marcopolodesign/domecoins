@@ -310,9 +310,14 @@ export default function Header() {
                         <SearchBox 
                           variant="header" 
                           placeholder="Buscar cartas..." 
-                          onSearch={() => {
+                          onSearch={(query) => {
                             setIsMobileSearchOpen(false)
-                            // Navigation is handled by SearchBox
+                            // Navigate to cards page with search query
+                            if (query) {
+                              window.location.href = `/cards?search=${encodeURIComponent(query)}`
+                            } else {
+                              window.location.href = `/cards?search=pokemon`
+                            }
                           }}
                         />
                         

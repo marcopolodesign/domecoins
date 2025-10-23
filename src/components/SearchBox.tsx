@@ -20,17 +20,13 @@ export default function SearchBox({
     e.preventDefault()
     const query = searchQuery.trim()
     
-    if (query) {
-      if (onSearch) {
-        onSearch(query)
-      } else {
-        // Default behavior: navigate to cards page with search filter
-        window.location.href = `/cards?search=${encodeURIComponent(query)}`
-      }
+    if (onSearch) {
+      // Call the callback with the query (callback handles navigation)
+      onSearch(query)
     } else {
-      // Default search when no query is provided
-      if (onSearch) {
-        onSearch('')
+      // Default behavior: navigate to cards page with search filter
+      if (query) {
+        window.location.href = `/cards?search=${encodeURIComponent(query)}`
       } else {
         // Navigate to cards page with default popular cards
         window.location.href = `/cards?search=pokemon`
