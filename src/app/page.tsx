@@ -179,7 +179,7 @@ export default function HomePage() {
         const validCards = (batchData.results || []).map((card: APICardResponse) => ({
           productId: card.productId,
           productName: card.productName || card.name,
-          marketPrice: card.pricing?.marketPrice || 0, // Use raw marketPrice
+          marketPrice: card.pricing?.retailPrice || card.pricing?.marketPrice || 0, // Use retailPrice (pre-calculated)
           lowestPrice: card.pricing?.lowPrice || 0,
           setName: card.set?.name || 'Unknown Set',
           rarityName: card.rarity || 'Unknown',
@@ -264,8 +264,8 @@ export default function HomePage() {
                   const cardType = card.customAttributes?.cardType?.[0] || 'Pokemon';
                   const energyType = card.customAttributes?.energyType?.[0] || '';
                   
-                  // Calculate retail price with formula and convert to ARS (same as ProductCard)
-                  const retailPrice = calculateFinalPrice(card.rarityName, card.marketPrice);
+                  // Use pre-calculated retailPrice (already has formula applied from API)
+                  const retailPrice = card.marketPrice; // This is actually retailPrice now
                   const arsPrice = getRoundedArsPrice(retailPrice * dolarBlueRate);
                   
                   // Debug logging for featured cards
@@ -274,7 +274,7 @@ export default function HomePage() {
                       productName: card.productName,
                       productId: card.productId,
                       rarityName: card.rarityName,
-                      marketPrice: card.marketPrice,
+                      marketPriceField: card.marketPrice,
                       retailPrice,
                       dolarBlueRate,
                       arsPrice
@@ -364,8 +364,8 @@ export default function HomePage() {
                 const cardType = card.customAttributes?.cardType?.[0] || 'Pokemon';
                 const energyType = card.customAttributes?.energyType?.[0] || '';
                 
-                // Calculate retail price with formula and convert to ARS (same as ProductCard)
-                const retailPrice = calculateFinalPrice(card.rarityName, card.marketPrice);
+                // Use pre-calculated retailPrice (already has formula applied from API)
+                const retailPrice = card.marketPrice; // This is actually retailPrice now
                 const arsPrice = getRoundedArsPrice(retailPrice * dolarBlueRate);
                 
                 return (
