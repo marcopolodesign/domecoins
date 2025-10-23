@@ -73,8 +73,12 @@ export default function ProductCard({
   const arsPrice = usdPrice ? getRoundedArsPrice(usdPrice * dolarBlueRate) : null
   
   // Log pricing for debugging
-  if (usdPrice) {
-    console.log(`[ProductCard] ${card.name}:`, {
+  if (usdPrice && card.name?.toLowerCase().includes('mew')) {
+    console.log(`[ProductCard Debug] ${card.name}:`, {
+      productId: card.productId,
+      name: card.name,
+      rarity: card.rarity,
+      pricing: card.pricing,
       usdPrice,
       dolarBlueRate,
       arsPrice,

@@ -8,6 +8,7 @@ import ReusableCardsBlock from '@/components/ReusableCardsBlock';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { getRoundedArsPrice } from '@/utils/priceFormatting';
+import { calculateFinalPrice } from '@/utils/priceFormulas';
 
 const features = [
   {
@@ -178,7 +179,7 @@ export default function HomePage() {
         const validCards = (batchData.results || []).map((card: APICardResponse) => ({
           productId: card.productId,
           productName: card.productName || card.name,
-          marketPrice: card.pricing?.retailPrice || card.pricing?.marketPrice || 0, // Use retailPrice (with formula applied)
+          marketPrice: card.pricing?.marketPrice || 0, // Use raw marketPrice
           lowestPrice: card.pricing?.lowPrice || 0,
           setName: card.set?.name || 'Unknown Set',
           rarityName: card.rarity || 'Unknown',
@@ -263,9 +264,22 @@ export default function HomePage() {
                   const cardType = card.customAttributes?.cardType?.[0] || 'Pokemon';
                   const energyType = card.customAttributes?.energyType?.[0] || '';
                   
-                  // Use the pre-calculated retail price (already has formula applied)
-                  const retailPrice = card.marketPrice; // This is now the retailPrice from API
+                  // Calculate retail price with formula and convert to ARS (same as ProductCard)
+                  const retailPrice = calculateFinalPrice(card.rarityName, card.marketPrice);
                   const arsPrice = getRoundedArsPrice(retailPrice * dolarBlueRate);
+                  
+                  // Debug logging for featured cards
+                  if (card.productName?.toLowerCase().includes('mew')) {
+                    console.log('[Featured Card Debug]', {
+                      productName: card.productName,
+                      productId: card.productId,
+                      rarityName: card.rarityName,
+                      marketPrice: card.marketPrice,
+                      retailPrice,
+                      dolarBlueRate,
+                      arsPrice
+                    });
+                  }
                   
                   return (
                     <Link
@@ -350,8 +364,8 @@ export default function HomePage() {
                 const cardType = card.customAttributes?.cardType?.[0] || 'Pokemon';
                 const energyType = card.customAttributes?.energyType?.[0] || '';
                 
-                // Use the pre-calculated retail price (already has formula applied)
-                const retailPrice = card.marketPrice; // This is now the retailPrice from API
+                // Calculate retail price with formula and convert to ARS (same as ProductCard)
+                const retailPrice = calculateFinalPrice(card.rarityName, card.marketPrice);
                 const arsPrice = getRoundedArsPrice(retailPrice * dolarBlueRate);
                 
                 return (

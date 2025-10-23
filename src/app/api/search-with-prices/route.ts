@@ -165,14 +165,15 @@ export async function GET(request: NextRequest) {
       const marketPrice = priceData.marketPrice || 0;
       const finalRetailPrice = calculateFinalPrice(rarity, marketPrice);
       
-      // Debug first card to check rarity
-      if (index === 0) {
-        console.log('[SearchWithPrices] First card rarity check:', {
+      // Debug Mew cards specifically
+      if (priceData.productName?.toLowerCase().includes('mew')) {
+        console.log('[SearchWithPrices] Mew card debug:', {
+          productId: priceData.productId,
           productName: priceData.productName,
           rarity: priceData.rarity,
-          hasRarity: !!priceData.rarity,
           marketPrice,
           finalRetailPrice,
+          rarityName: priceData.rarityName
         });
       }
       
