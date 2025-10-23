@@ -176,6 +176,18 @@ export default function HomePage() {
         }
         
         const batchData = await batchResponse.json();
+        
+        // Debug: Log the raw API response for Mew
+        const mewCard = batchData.results?.find((c: any) => c.productName?.toLowerCase().includes('mew'));
+        if (mewCard) {
+          console.log('[Homepage] Raw API response for Mew:', {
+            productId: mewCard.productId,
+            productName: mewCard.productName,
+            rarity: mewCard.rarity,
+            pricing: mewCard.pricing,
+          });
+        }
+        
         const validCards = (batchData.results || []).map((card: APICardResponse) => ({
           productId: card.productId,
           productName: card.productName || card.name,
