@@ -7,8 +7,8 @@ import SearchBox from '@/components/SearchBox';
 import ReusableCardsBlock from '@/components/ReusableCardsBlock';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
-import { calculateFinalPrice } from '@/utils/priceFormulas';
 import { getRoundedArsPrice } from '@/utils/priceFormatting';
+import { calculateFinalPrice } from '@/utils/priceFormulas';
 
 const features = [
   {
@@ -53,6 +53,7 @@ interface APICardResponse {
   rarity?: string;
   pricing?: {
     marketPrice?: number;
+    retailPrice?: number;
     lowPrice?: number;
   };
   set?: {
@@ -72,6 +73,11 @@ export default function HomePage() {
   
   // Get dollar rate for price calculations
   const dolarBlueRate = useSelector((state: RootState) => state.currency.dolarBlueRate);
+  
+  // Log dollar rate on mount and when it changes
+  useEffect(() => {
+    console.log('[HomePage] Dollar Blue Rate from Redux:', dolarBlueRate);
+  }, [dolarBlueRate]);
 
   // Memoize IDs to prevent unnecessary re-renders in ReusableCardsBlock
   const bestSellerIds = useMemo(() => 
@@ -84,8 +90,6 @@ export default function HomePage() {
     const fetchFeaturedCards = async () => {
       try {
         setLoading(true);
-        
-        console.log('[Homepage] Fetching featured cards from API...');
         
         // 1. Get featured card IDs from KV
         const idsResponse = await fetch('/api/featured-cards');
@@ -146,10 +150,8 @@ export default function HomePage() {
         }
         
         const { productIds } = await idsResponse.json();
-        console.log(`[Homepage] Retrieved ${productIds.length} featured card IDs`);
         
         if (!productIds || productIds.length === 0) {
-          console.log('[Homepage] No featured cards configured');
           setLoading(false);
           return;
         }
@@ -157,10 +159,6 @@ export default function HomePage() {
         // 2. Shuffle and select random IDs (5 for carousel + 6 for best sellers)
         const shuffled = [...productIds].sort(() => 0.5 - Math.random());
         const selectedIds = shuffled.slice(0, 11);
-        
-        console.log(`[Homepage] Selected ${selectedIds.length} random IDs from ${productIds.length} available`);
-        
-        console.log(`[Homepage] Fetching ${selectedIds.length} cards in batch...`);
         
         const batchResponse = await fetch('/api/search-with-prices', {
           method: 'POST',
@@ -175,10 +173,11 @@ export default function HomePage() {
         }
         
         const batchData = await batchResponse.json();
+        
         const validCards = (batchData.results || []).map((card: APICardResponse) => ({
           productId: card.productId,
           productName: card.productName || card.name,
-          marketPrice: card.pricing?.marketPrice || 0,
+          marketPrice: card.pricing?.retailPrice || card.pricing?.marketPrice || 0, // Use retailPrice (pre-calculated)
           lowestPrice: card.pricing?.lowPrice || 0,
           setName: card.set?.name || 'Unknown Set',
           rarityName: card.rarity || 'Unknown',
@@ -187,8 +186,6 @@ export default function HomePage() {
             energyType: card.energyType || []
           }
         }));
-        
-        console.log(`[Homepage] Loaded ${validCards.length} featured cards`);
         
         // 3. Distribute cards WITHOUT repeating:
         // - Carousel (mobile & desktop): first 5 cards
@@ -200,8 +197,14 @@ export default function HomePage() {
         setCarouselCards(carouselSelection);
         setBestSellerCards(bestSellerSelection);
         
-        console.log(`[Homepage] Carousel cards: ${carouselSelection.length}`);
-        console.log(`[Homepage] Best seller cards: ${bestSellerSelection.length}`);
+        // Log first featured card retail price in USD and conversion
+        if (carouselSelection.length > 0) {
+          const firstCard = carouselSelection[0];
+          console.log(`[FeaturedCard[0]] ${firstCard.productName}:`, {
+            retailPriceUSD: firstCard.marketPrice,
+            productId: firstCard.productId
+          });
+        }
         
       } catch (error) {
         console.error('[Homepage] Error fetching featured cards:', error);
@@ -258,14 +261,25 @@ export default function HomePage() {
                   </div>
                 ))
               ) : (
-                carouselCards.map((card) => {
+                carouselCards.map((card, index) => {
                   // Get card type from customAttributes
                   const cardType = card.customAttributes?.cardType?.[0] || 'Pokemon';
                   const energyType = card.customAttributes?.energyType?.[0] || '';
                   
-                  // Calculate retail price with formula and convert to ARS (same as ProductCard)
-                  const retailPrice = calculateFinalPrice(card.rarityName, card.marketPrice);
+                  // Use pre-calculated retailPrice (already has formula applied from API)
+                  const retailPrice = card.marketPrice; // This is actually retailPrice now
                   const arsPrice = getRoundedArsPrice(retailPrice * dolarBlueRate);
+                  
+                  // Log first card conversion
+                  if (index === 0) {
+                    console.log(`[FeaturedCard Carousel] ${card.productName}:`, {
+                      retailPriceUSD: retailPrice,
+                      dolarBlueRate: dolarBlueRate,
+                      calculation: retailPrice * dolarBlueRate,
+                      arsPriceRounded: arsPrice,
+                      productId: card.productId
+                    });
+                  }
                   
                   return (
                     <Link
@@ -350,8 +364,8 @@ export default function HomePage() {
                 const cardType = card.customAttributes?.cardType?.[0] || 'Pokemon';
                 const energyType = card.customAttributes?.energyType?.[0] || '';
                 
-                // Calculate retail price with formula and convert to ARS (same as ProductCard)
-                const retailPrice = calculateFinalPrice(card.rarityName, card.marketPrice);
+                // Use pre-calculated retailPrice (already has formula applied from API)
+                const retailPrice = card.marketPrice; // This is actually retailPrice now
                 const arsPrice = getRoundedArsPrice(retailPrice * dolarBlueRate);
                 
                 return (

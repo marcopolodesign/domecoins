@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import ProductCard from './ProductCard';
-import { calculateFinalPrice } from '@/utils/priceFormulas';
 
 // Interface for TCGPlayer card data
 interface TCGPlayerCard {
@@ -61,11 +60,9 @@ export default function ReusableCardsBlock({
         if (featuredCardIds && featuredCardIds.length > 0) {
           // Prevent multiple fetches for the same IDs
           if (hasFetchedRef.current) {
-            console.log('[ReusableCardsBlock] Already fetched, skipping...');
             setLoading(false);
             return;
           }
-          console.log(`[ReusableCardsBlock] Fetching ${featuredCardIds.length} specific featured cards in batch...`);
           
           const batchResponse = await fetch('/api/search-with-prices', {
             method: 'POST',
@@ -78,7 +75,7 @@ export default function ReusableCardsBlock({
             const validCards = (batchData.results || []).map((card: any) => ({
               productId: card.productId,
               productName: card.productName || card.name,
-              marketPrice: card.pricing?.marketPrice || 0,
+              marketPrice: card.pricing?.retailPrice || card.pricing?.marketPrice || 0, // Use retailPrice (pre-calculated with formula)
               lowestPrice: card.pricing?.lowPrice || 0,
               setName: card.set?.name || 'Unknown Set',
               rarityName: card.rarity || 'Unknown',
@@ -100,7 +97,6 @@ export default function ReusableCardsBlock({
         
         // PRIORITY 2: If useInventory=true, fetch from inventory API
         if (useInventory) {
-          console.log('[ReusableCardsBlock] Fetching from inventory...');
           const inventoryResponse = await fetch('/api/inventory');
           
           if (inventoryResponse.ok) {
@@ -117,14 +113,10 @@ export default function ReusableCardsBlock({
               })
               .map(id => parseInt(id, 10));
             
-            console.log(`[ReusableCardsBlock] Found ${inStockIds.length} products in stock`);
-            
             if (inStockIds.length > 0) {
               // Shuffle and select random cards
               const shuffled = [...inStockIds].sort(() => 0.5 - Math.random());
               const selectedIds = shuffled.slice(0, Math.min(randomCount, inStockIds.length));
-              
-              console.log(`[ReusableCardsBlock] Selected random IDs:`, selectedIds);
               
               // Fetch card details in batch for better performance
               const batchResponse = await fetch('/api/search-with-prices', {
@@ -138,7 +130,7 @@ export default function ReusableCardsBlock({
                 const validCards = (batchData.results || []).map((card: any) => ({
                   productId: card.productId,
                   productName: card.productName || card.name,
-                  marketPrice: card.pricing?.marketPrice || 0,
+                  marketPrice: card.pricing?.retailPrice || card.pricing?.marketPrice || 0, // Use retailPrice (pre-calculated with formula)
                   lowestPrice: card.pricing?.lowPrice || 0,
                   setName: card.set?.name || 'Unknown Set',
                   rarityName: card.rarity || 'Unknown',
@@ -148,7 +140,6 @@ export default function ReusableCardsBlock({
                   }
                 }));
                 
-                console.log(`[ReusableCardsBlock] Loaded ${validCards.length} cards from inventory`);
                 setFeaturedCards(validCards);
                 setLoading(false);
                 return;
@@ -200,53 +191,7 @@ export default function ReusableCardsBlock({
       } catch (error) {
         console.error('Error fetching featured cards:', error);
         // Fallback to placeholder cards
-        setFeaturedCards([
-          {
-            productId: 250309,
-            productName: 'Mew',
-            marketPrice: 4.22,
-            lowestPrice: 0.62,
-            setName: 'Celebrations',
-            rarityName: 'Holo Rare',
-            customAttributes: { cardType: ['Pokemon'], energyType: ['Psychic'] }
-          },
-          {
-            productId: 250314,
-            productName: 'Groudon',
-            marketPrice: 0.40,
-            lowestPrice: 0.04,
-            setName: 'Celebrations',
-            rarityName: 'Holo Rare',
-            customAttributes: { cardType: ['Pokemon'], energyType: ['Fighting'] }
-          },
-          {
-            productId: 250300,
-            productName: 'Ho-Oh',
-            marketPrice: 0.27,
-            lowestPrice: 0.01,
-            setName: 'Celebrations',
-            rarityName: 'Holo Rare',
-            customAttributes: { cardType: ['Pokemon'], energyType: ['Fire'] }
-          },
-          {
-            productId: 250317,
-            productName: 'Lugia',
-            marketPrice: 0.81,
-            lowestPrice: 0.06,
-            setName: 'Celebrations',
-            rarityName: 'Holo Rare',
-            customAttributes: { cardType: ['Pokemon'], energyType: ['Colorless'] }
-          },
-          {
-            productId: 250303,
-            productName: 'Pikachu',
-            marketPrice: 5.29,
-            lowestPrice: 1.99,
-            setName: 'Celebrations',
-            rarityName: 'Holo Rare',
-            customAttributes: { cardType: ['Pokemon'], energyType: ['Lightning'] }
-          }
-        ].slice(0, randomCount));
+  
       } finally {
         setLoading(false);
       }
@@ -323,9 +268,14 @@ export default function ReusableCardsBlock({
                
             ))
           ) : (
-            featuredCards.map((card) => {
-              // Calculate retail price using formula
-              const retailPrice = calculateFinalPrice(card.rarityName, card.marketPrice);
+            featuredCards.map((card, index) => {
+              // card.marketPrice already contains the pre-calculated retailPrice from API
+              const retailPrice = card.marketPrice; // No need to apply formula again
+              
+              // Log first product card retail price in USD
+              if (index === 0) {
+                console.log(`[ProductCard[0] Retail Price USD] ${card.productName}:`, retailPrice);
+              }
               
               return (
                 <ProductCard
@@ -339,8 +289,8 @@ export default function ReusableCardsBlock({
                     rarity: card.rarityName,
                     setId: card.productId.toString(),
                     pricing: {
-                      marketPrice: card.marketPrice,
-                      retailPrice: retailPrice, // Add calculated retail price
+                      marketPrice: card.marketPrice, // This is actually retailPrice
+                      retailPrice: retailPrice, // Pre-calculated retail price
                       lowPrice: card.lowestPrice,
                       source: 'TCGPlayer',
                       lastUpdated: new Date().toISOString(),

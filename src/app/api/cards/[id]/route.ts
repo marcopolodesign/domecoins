@@ -36,6 +36,18 @@ export async function GET(
         const marketPrice = variant.marketPrice || 0;
         const retailPrice = calculateFinalPrice(rarity, marketPrice);
         
+        // Debug logging for Pikachu
+        if (product.productName?.toLowerCase().includes('pikachu') && productId === 500263) {
+          console.log('[CardDetailAPI] Pikachu 500263 variant pricing:', {
+            productId,
+            productName: product.productName,
+            rarity,
+            printing: variant.printing,
+            marketPrice,
+            retailPrice,
+          });
+        }
+        
         return {
           ...variant,
           retailPrice, // Add calculated retail price
@@ -48,6 +60,17 @@ export async function GET(
       product.rarity || 'Unknown',
       product.marketPrice || 0
     );
+    
+    // Debug logging for Pikachu
+    if (product.productName?.toLowerCase().includes('pikachu') && productId === 500263) {
+      console.log('[CardDetailAPI] Pikachu 500263 main pricing:', {
+        productId,
+        productName: product.productName,
+        rarity: product.rarity,
+        marketPrice: product.marketPrice,
+        mainRetailPrice,
+      });
+    }
     
     return NextResponse.json({
       ...product,
