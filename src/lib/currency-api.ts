@@ -24,14 +24,14 @@ class CurrencyAPI {
     }
 
     try {
-      // First, try to get custom price or API rate from our backend
+      // ALWAYS get rate from our backend (includes admin custom price)
       console.log('[CurrencyAPI] Fetching rate from /api/currency...');
       const response = await axios.get('/api/currency');
       
       if (response.data) {
         const rate = response.data.blueRate || response.data.rate || response.data.dolarBlue;
         
-        if (rate) {
+        if (rate && rate > 0) {
           console.log('[CurrencyAPI] Got rate from backend:', rate, 'Source:', response.data.source || 'Unknown');
           
           this.cache = {
@@ -45,112 +45,21 @@ class CurrencyAPI {
         }
       }
       
-      // Fallback to multiple sources
-      console.log('[CurrencyAPI] Backend failed, trying external sources...');
-      const rate = await this.fetchFromMultipleSources();
-      
-      this.cache = {
-        usdToArs: rate,
-        dolarBlue: rate,
-        lastUpdated: new Date().toISOString()
-      };
-      this.cacheExpiry = new Date(Date.now() + this.CACHE_DURATION);
-      
-      console.log('[CurrencyAPI] Got rate from external sources:', rate);
-      return rate;
+      throw new Error('Backend returned invalid rate');
     } catch (error) {
-      console.error('[CurrencyAPI] Error fetching dolar blue rate:', error);
+      console.error('[CurrencyAPI] Error fetching dolar blue rate from backend:', error);
       
-      // Return cached value if available, otherwise fallback
+      // Return cached value if available
       if (this.cache) {
         console.log('[CurrencyAPI] Using stale cache:', this.cache.dolarBlue);
         return this.cache.dolarBlue;
       }
       
-      // Fallback rate if all else fails
-      console.log('[CurrencyAPI] Using fallback rate: 1335');
-      return 1335; // Default rate as mentioned in requirements
+      // If no cache, throw error - we MUST have a backend rate
+      throw new Error('Failed to fetch dollar rate from backend and no cache available');
     }
   }
 
-  private async fetchFromMultipleSources(): Promise<number> {
-    const sources = [
-      this.fetchFromDolarApi,
-      this.fetchFromDolarhoy,
-      this.fetchFromDolarito,
-      this.fetchFromAmbito
-    ];
-
-    for (const source of sources) {
-      try {
-        const rate = await source.call(this);
-        if (rate && rate > 0) {
-          return rate;
-        }
-      } catch (error) {
-        console.warn('Failed to fetch from source:', error);
-        continue;
-      }
-    }
-
-    throw new Error('All currency sources failed');
-  }
-
-  // Primary source: DolarApi (public API)
-  private async fetchFromDolarApi(): Promise<number> {
-    try {
-      const response = await axios.get('https://dolarapi.com/v1/dolares/blue', {
-        timeout: 5000
-      });
-      
-      if (response.data && response.data.venta) {
-        return parseFloat(response.data.venta);
-      }
-      
-      throw new Error('Invalid response from DolarApi');
-    } catch (error) {
-      throw new Error('DolarApi fetch failed');
-    }
-  }
-
-  // Fallback: Scrape dolarhoy.com
-  private async fetchFromDolarhoy(): Promise<number> {
-    try {
-      // Note: This would require a backend proxy to avoid CORS
-      // For now, we'll skip this implementation
-      throw new Error('Dolarhoy scraping not implemented');
-    } catch (error) {
-      throw new Error('Dolarhoy fetch failed');
-    }
-  }
-
-  // Fallback: Scrape dolarito.ar
-  private async fetchFromDolarito(): Promise<number> {
-    try {
-      // Note: This would require a backend proxy to avoid CORS
-      // For now, we'll skip this implementation
-      throw new Error('Dolarito scraping not implemented');
-    } catch (error) {
-      throw new Error('Dolarito fetch failed');
-    }
-  }
-
-  // Fallback: Ambito.com API
-  private async fetchFromAmbito(): Promise<number> {
-    try {
-      const response = await axios.get('https://mercados.ambito.com//dolar/informal/variacion', {
-        timeout: 5000
-      });
-      
-      if (response.data && response.data.venta) {
-        return parseFloat(response.data.venta);
-      }
-      
-      throw new Error('Invalid response from Ambito');
-    } catch (error) {
-      throw new Error('Ambito fetch failed');
-    }
-  }
 
   convertUsdToArs(usdAmount: number): Promise<number> {
     return this.getDolarBlueRate().then(rate => usdAmount * rate);

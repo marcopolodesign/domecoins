@@ -72,18 +72,15 @@ export default function ProductCard({
   const usdPrice = getPrice()
   const arsPrice = usdPrice ? getRoundedArsPrice(usdPrice * dolarBlueRate) : null
   
-  // Log pricing for debugging
-  if (usdPrice && card.name?.toLowerCase().includes('mew')) {
-    console.log(`[ProductCard Debug] ${card.name}:`, {
+  // Log pricing for specific card ID with full conversion details
+  if (card.productId === 285396 && usdPrice) {
+    console.log(`[ProductCard] ${card.name}:`, {
+      retailPriceUSD: usdPrice,
+      dolarBlueRate: dolarBlueRate,
+      calculation: usdPrice * dolarBlueRate,
+      arsPriceRounded: arsPrice,
       productId: card.productId,
-      name: card.name,
-      rarity: card.rarity,
-      pricing: card.pricing,
-      usdPrice,
-      dolarBlueRate,
-      arsPrice,
-      stock: card.stock,
-      inStock: card.inStock
+      pricing: card.pricing
     });
   }
 

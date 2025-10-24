@@ -9,7 +9,7 @@ interface CurrencyState {
 }
 
 const initialState: CurrencyState = {
-  dolarBlueRate: 1335, // Default rate
+  dolarBlueRate: 0, // Will be fetched from backend
   lastUpdated: null,
   loading: false,
   error: null,

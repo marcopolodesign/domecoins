@@ -667,6 +667,9 @@ export async function fetchProductDetails(productId: number): Promise<TCGPlayerP
     // For now, all variants are marked as "false" (Por Encargo) until CSV integration
     const printingEntries = Array.from(printingMap.entries());
     
+    // Track which variant should be the primary/featured one
+    let primaryPrinting: string | null = null;
+    
     for (let i = 0; i < printingEntries.length; i++) {
       const [printing, data] = printingEntries[i];
       const lowestPrice = Math.min(...data.prices);
@@ -676,6 +679,11 @@ export async function fetchProductDetails(productId: number): Promise<TCGPlayerP
       const marketPrice = i === 0 && product.marketPrice 
         ? product.marketPrice 
         : lowestPrice;
+      
+      // Mark the first printing as primary (it has the official TCGPlayer marketPrice)
+      if (i === 0) {
+        primaryPrinting = printing;
+      }
       
       variants.push({
         productId: data.productId,
@@ -687,8 +695,14 @@ export async function fetchProductDetails(productId: number): Promise<TCGPlayerP
       });
     }
     
-    // Sort variants by printing name for consistency
-    variants.sort((a, b) => a.printing.localeCompare(b.printing));
+    // Sort variants: primary variant first, then alphabetically
+    variants.sort((a, b) => {
+      // Primary variant always comes first
+      if (a.printing === primaryPrinting) return -1;
+      if (b.printing === primaryPrinting) return 1;
+      // Others sorted alphabetically
+      return a.printing.localeCompare(b.printing);
+    });
     
     console.log(`[TCGPlayer] Extracted ${variants.length} unique printings from API listings`);
     
@@ -720,8 +734,14 @@ export async function fetchProductDetails(productId: number): Promise<TCGPlayerP
         }
       }
       
-      // Re-sort after adding scraped variants
-      variants.sort((a, b) => a.printing.localeCompare(b.printing));
+      // Re-sort after adding scraped variants: primary variant first, then alphabetically
+      variants.sort((a, b) => {
+        // Primary variant always comes first
+        if (a.printing === primaryPrinting) return -1;
+        if (b.printing === primaryPrinting) return 1;
+        // Others sorted alphabetically
+        return a.printing.localeCompare(b.printing);
+      });
     }
     
     console.log(`[TCGPlayer] Final variants count: ${variants.length}`, 
