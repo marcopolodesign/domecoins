@@ -24,7 +24,7 @@ if (typeof window !== 'undefined') {
 
 const navigation = [
   { name: 'Cartas', href: '/cards?inStock=true' },
-  // { name: 'Accesorios', href: '/rarezas' },
+  { name: 'Accesorios', href: '/accessories' },
   // { name: 'Sellados', href: '/rarezas' },
 ]
 
@@ -160,8 +160,6 @@ export default function Header() {
                 {/* Logo */}
                 <div className="flex items-center">
                   <Link href="/" className="flex items-center space-x-3">
-                    <div className="h-10 w-10 border-2 border-[`${logoTextColor}`] rounded-full flex items-center justify-center">
-                    </div>
                     <div className="w-32 h-full mb-3">
                       <svg
                         viewBox="0 0 3000 942"

@@ -137,7 +137,14 @@ export default function ProductCard({
     const productId = card.productId || card.id;
     
     if (productId) {
-      router.push(`/cards/${productId}`);
+      // Check if this is an accessory (ID starts with "AC")
+      const isAccessory = typeof productId === 'string' && productId.startsWith('AC');
+      
+      if (isAccessory) {
+        router.push(`/accessories/${productId}`);
+      } else {
+        router.push(`/cards/${productId}`);
+      }
     }
   }
 

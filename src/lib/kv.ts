@@ -853,3 +853,85 @@ export async function isProductBlacklisted(productId: string): Promise<boolean> 
   const blacklist = await getBlacklistCards();
   return blacklist.includes(productId);
 }
+
+/**
+ * Accessories Management
+ * Store accessories data from CSV (no TCG API fetch needed)
+ */
+
+const ACCESSORIES_KEY = 'accessories:data';
+const LOCAL_ACCESSORIES_FILE = path.join(LOCAL_DATA_DIR, 'accessories.json');
+
+export interface Accessory {
+  id: string; // TCGplayer Id (or custom AC#### id)
+  productLine: string;
+  setName: string;
+  productName: string;
+  title: string;
+  number: string;
+  totalQuantity: number;
+  addToQuantity: number;
+  imageUrl: string;
+  price?: number; // Price in USD
+}
+
+export async function setAccessories(accessories: Accessory[]): Promise<void> {
+  const client = await getRedisClient();
+  
+  if (!client) {
+    // Local development: Use JSON file
+    console.log('[KV] No Redis connection, saving accessories to local file...');
+    const localData = {
+      comment: "Accessories data. Updated from admin CSV upload.",
+      lastUpdated: new Date().toISOString(),
+      accessories: accessories,
+      count: accessories.length
+    };
+    writeLocalJSON(LOCAL_ACCESSORIES_FILE, localData);
+    console.log(`[KV] Saved ${accessories.length} accessories to local file`);
+    return;
+  }
+
+  try {
+    await client.set(ACCESSORIES_KEY, JSON.stringify(accessories));
+    console.log(`[KV] Saved ${accessories.length} accessories to Redis`);
+  } catch (error) {
+    console.error('[KV] Error saving accessories:', error);
+    throw error;
+  }
+}
+
+export async function getAccessories(): Promise<Accessory[]> {
+  const client = await getRedisClient();
+  
+  if (!client) {
+    // Local development: Read from JSON file
+    console.log('[KV] No Redis connection, reading accessories from local file...');
+    const localData = readLocalJSON(LOCAL_ACCESSORIES_FILE);
+    if (localData && localData.accessories && Array.isArray(localData.accessories)) {
+      console.log(`[KV] Found ${localData.accessories.length} accessories in local file`);
+      return localData.accessories;
+    }
+    console.log('[KV] No accessories found in local file');
+    return [];
+  }
+
+  try {
+    const data = await client.get(ACCESSORIES_KEY);
+    if (!data) {
+      console.log('[KV] No accessories found in Redis');
+      return [];
+    }
+    const accessories = JSON.parse(data);
+    console.log(`[KV] Retrieved ${accessories.length} accessories from Redis`);
+    return accessories;
+  } catch (error) {
+    console.error('[KV] Error retrieving accessories:', error);
+    return [];
+  }
+}
+
+export async function getAccessoriesCount(): Promise<number> {
+  const accessories = await getAccessories();
+  return accessories.length;
+}
