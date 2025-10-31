@@ -36,6 +36,13 @@ export default function AdminPage() {
   const [blacklistSuccess, setBlacklistSuccess] = useState('');
   const [blacklistStats, setBlacklistStats] = useState<{totalCards: number} | null>(null);
 
+  // Accessories management
+  const [accessoriesCsvFile, setAccessoriesCsvFile] = useState<File | null>(null);
+  const [accessoriesLoading, setAccessoriesLoading] = useState(false);
+  const [accessoriesError, setAccessoriesError] = useState('');
+  const [accessoriesSuccess, setAccessoriesSuccess] = useState('');
+  const [accessoriesStats, setAccessoriesStats] = useState<{totalItems: number} | null>(null);
+
   // Check if already authenticated
   useEffect(() => {
     const authToken = sessionStorage.getItem('admin_auth');
@@ -45,6 +52,7 @@ export default function AdminPage() {
       fetchInventoryStats();
       fetchFeaturedStats();
       fetchBlacklistStats();
+      fetchAccessoriesStats();
     }
   }, []);
 
@@ -285,6 +293,18 @@ export default function AdminPage() {
     }
   };
 
+  const fetchAccessoriesStats = async () => {
+    try {
+      const response = await fetch('/api/accessories');
+      if (response.ok) {
+        const data = await response.json();
+        setAccessoriesStats({ totalItems: data.totalItems || 0 });
+      }
+    } catch (err) {
+      console.error('Error fetching accessories stats:', err);
+    }
+  };
+
   const handleBlacklistFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setBlacklistCsvFile(e.target.files[0]);
@@ -347,6 +367,71 @@ export default function AdminPage() {
     } catch (err) {
       setBlacklistError('Error al cargar el archivo');
       setBlacklistLoading(false);
+    }
+  };
+
+  const handleAccessoriesFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setAccessoriesCsvFile(e.target.files[0]);
+      setAccessoriesError('');
+      setAccessoriesSuccess('');
+    }
+  };
+
+  const handleAccessoriesUpload = async () => {
+    if (!accessoriesCsvFile) {
+      setAccessoriesError('Por favor selecciona un archivo CSV');
+      return;
+    }
+
+    setAccessoriesLoading(true);
+    setAccessoriesError('');
+    setAccessoriesSuccess('');
+
+    try {
+      const reader = new FileReader();
+
+      reader.onload = async (e) => {
+        try {
+          const csvContent = e.target?.result as string;
+          
+          const response = await fetch('/api/accessories', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'text/csv',
+            },
+            body: csvContent,
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setAccessoriesSuccess(`✅ ${data.count} accesorios cargados exitosamente`);
+            setAccessoriesCsvFile(null);
+            fetchAccessoriesStats();
+            
+            // Reset file input
+            const fileInput = document.getElementById('accessories-csv-upload') as HTMLInputElement;
+            if (fileInput) fileInput.value = '';
+          } else {
+            const data = await response.json();
+            setAccessoriesError(data.error || 'Error al cargar los accesorios');
+          }
+        } catch (err) {
+          setAccessoriesError('Error al procesar el archivo CSV');
+        } finally {
+          setAccessoriesLoading(false);
+        }
+      };
+
+      reader.onerror = () => {
+        setAccessoriesError('Error al leer el archivo');
+        setAccessoriesLoading(false);
+      };
+
+      reader.readAsText(accessoriesCsvFile);
+    } catch (err) {
+      setAccessoriesError('Error al cargar el archivo');
+      setAccessoriesLoading(false);
     }
   };
 
@@ -743,6 +828,85 @@ export default function AdminPage() {
               <li>• Las cartas bloqueadas no aparecerán en búsquedas ni en el catálogo.</li>
               <li>• La lista se carga completamente con cada upload (sobrescribe la anterior).</li>
               <li>• Además, las cartas con rareza "Code Card" se filtran automáticamente.</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Accessories Section */}
+        <div className="mt-6 bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h3 className="text-lg leading-6 font-medium text-gray-900 font-thunder mb-6">
+              Accesorios
+            </h3>
+
+            {accessoriesStats && (
+              <div className="mb-6 p-4 bg-orange-50 rounded-md">
+                <p className="text-sm text-orange-900">
+                  <span className="font-semibold">Accesorios cargados:</span> {accessoriesStats.totalItems}
+                </p>
+              </div>
+            )}
+
+            <form onSubmit={(e) => { e.preventDefault(); handleAccessoriesUpload(); }} className="space-y-4">
+              <div>
+                <label htmlFor="accessories-csv-upload" className="block text-sm font-medium text-gray-700 mb-2">
+                  Cargar Archivo CSV de Accesorios
+                </label>
+                <input
+                  type="file"
+                  id="accessories-csv-upload"
+                  accept=".csv"
+                  onChange={handleAccessoriesFileChange}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+                  required
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                  Formato esperado: CSV con columnas separadas por coma (,) o punto y coma (;)
+                </p>
+              </div>
+
+              {accessoriesCsvFile && (
+                <div className="p-3 bg-orange-50 rounded-md">
+                  <p className="text-sm text-orange-900">
+                    📄 Archivo seleccionado: <span className="font-semibold">{accessoriesCsvFile.name}</span>
+                  </p>
+                </div>
+              )}
+
+              {accessoriesError && (
+                <div className="rounded-md bg-red-50 p-4">
+                  <p className="text-sm text-red-800">{accessoriesError}</p>
+                </div>
+              )}
+
+              {accessoriesSuccess && (
+                <div className="rounded-md bg-green-50 p-4">
+                  <p className="text-sm text-green-800">{accessoriesSuccess}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={accessoriesLoading || !accessoriesCsvFile}
+                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {accessoriesLoading ? 'Cargando...' : 'Subir Accesorios'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div className="mt-6 bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h4 className="text-sm font-medium text-gray-900 mb-4">Información de Accesorios</h4>
+            <ul className="text-sm text-gray-600 space-y-2">
+              <li>• El archivo CSV puede estar separado por coma (,) o punto y coma (;).</li>
+              <li>• Columnas requeridas: TCGplayer Id, Product Line, Set Name, Product Name, Title, Number, Total Quantity, Add to Quantity, Img, Price.</li>
+              <li>• Los accesorios se almacenan directamente sin consultar la API de TCG.</li>
+              <li>• La columna Price es opcional y debe estar en USD.</li>
+              <li>• Los accesorios se cargan completamente con cada upload (sobrescribe los anteriores).</li>
             </ul>
           </div>
         </div>

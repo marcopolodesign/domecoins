@@ -53,6 +53,9 @@ export const metadata: Metadata = {
   },
 }
 
+
+
+
 export default function RootLayout({
   children,
 }: {
@@ -60,6 +63,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
+      <head>
+        <link rel="icon" href="/favicon.png" type="image/png" />
+      </head>
       <body className="antialiased bg-gray-50 flex flex-col min-h-screen">
         <Providers>
           <Header />
