@@ -188,6 +188,35 @@ function CardsPageContent() {
     }
   }
 
+  // Infinite scroll observer for in-stock cards
+  useEffect(() => {
+    const inStockParam = searchParams.get('inStock')
+    const shouldShowOnlyInStock = inStockParam === 'true'
+    
+    if (!shouldShowOnlyInStock || !observerTarget.current || !hasMoreCards) {
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isLoadingMore && hasMoreCards) {
+          console.log('[CardsPage] Loading more cards...')
+          setIsLoadingMore(true)
+          loadCardBatch(allInStockIds, currentBatch + 1)
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    observer.observe(observerTarget.current)
+
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current)
+      }
+    }
+  }, [searchParams, hasMoreCards, isLoadingMore, allInStockIds, currentBatch])
+
   // Check if we're showing in-stock view
   const inStockParam = searchParams.get('inStock')
   const showingInStock = inStockParam === 'true'
@@ -221,16 +250,16 @@ function CardsPageContent() {
     
     // Sort cards
     filtered.sort((a, b) => {
-      // First priority: in-stock cards always at top
+      // First priority: in-stock cards ALWAYS at top
       const aInStock = 'inStock' in a ? a.inStock : false
       const bInStock = 'inStock' in b ? b.inStock : false
       
       if (aInStock && !bInStock) return -1
       if (!aInStock && bInStock) return 1
       
-      // Second priority: apply price sort order
-      const aPrice = a.pricing?.marketPrice || 0
-      const bPrice = b.pricing?.marketPrice || 0
+      // Second priority: apply price sort order (use retailPrice which is what we display)
+      const aPrice = a.pricing?.retailPrice || a.pricing?.marketPrice || 0
+      const bPrice = b.pricing?.retailPrice || b.pricing?.marketPrice || 0
       
       if (sortOrder === 'Precio: Menor a mayor') {
         return aPrice - bPrice
@@ -464,8 +493,29 @@ function CardsPageContent() {
                       ))}
                     </div>
 
-                {/* Pagination */}
-                {pagination.totalCount > pagination.pageSize && (
+                {/* Infinite Scroll Observer Target (for in-stock view) */}
+                {showingInStock && hasMoreCards && (
+                  <div ref={observerTarget} className="py-8 text-center">
+                    {isLoadingMore && (
+                      <div className="flex items-center justify-center gap-3">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                        <p className="text-gray-600 font-interphases">Cargando más cartas...</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* End of results message (for in-stock view) */}
+                {showingInStock && !hasMoreCards && displayedCards.length > 0 && (
+                  <div className="py-8 text-center">
+                    <p className="text-gray-600 font-interphases">
+                      ✓ Has visto todas las {allInStockIds.length} cartas en stock
+                    </p>
+                  </div>
+                )}
+
+                {/* Pagination (for search view) */}
+                {!showingInStock && pagination.totalCount > pagination.pageSize && (
                   <div className="space-y-4 mt-8">
                     {/* Pagination Info */}
                     <div className="text-center text-sm text-gray-600">

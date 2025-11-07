@@ -21,6 +21,20 @@ export default function AccessoryDetailPage() {
   const [loading, setLoading] = useState(true);
   const imageRef = useRef<HTMLImageElement>(null);
   
+  // Helper function to transform Cloudinary URLs for browser compatibility
+  const transformCloudinaryUrl = (url: string): string => {
+    if (!url) return url;
+    
+    // Check if it's a Cloudinary URL
+    if (url.includes('cloudinary.com/') && url.includes('/upload/')) {
+      // Add f_auto (automatic format) and q_auto (automatic quality) transformations
+      // This converts HEIC to WebP/JPG automatically based on browser support
+      return url.replace('/upload/', '/upload/f_auto,q_auto/');
+    }
+    
+    return url;
+  };
+  
   useEffect(() => {
     const fetchAccessory = async () => {
       try {
@@ -37,6 +51,11 @@ export default function AccessoryDetailPage() {
         
         if (!foundAccessory) {
           throw new Error('Accessory not found');
+        }
+        
+        // Transform Cloudinary URL for browser compatibility
+        if (foundAccessory.imageUrl) {
+          foundAccessory.imageUrl = transformCloudinaryUrl(foundAccessory.imageUrl);
         }
         
         setAccessory(foundAccessory);

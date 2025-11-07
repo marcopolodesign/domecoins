@@ -42,6 +42,20 @@ export default function AccessoriesPage() {
     fetchAccessories()
   }, [])
 
+  // Helper function to transform Cloudinary URLs for browser compatibility
+  const transformCloudinaryUrl = (url: string): string => {
+    if (!url) return url;
+    
+    // Check if it's a Cloudinary URL
+    if (url.includes('cloudinary.com/') && url.includes('/upload/')) {
+      // Add f_auto (automatic format) and q_auto (automatic quality) transformations
+      // This converts HEIC to WebP/JPG automatically based on browser support
+      return url.replace('/upload/', '/upload/f_auto,q_auto/');
+    }
+    
+    return url;
+  };
+
   // Transform accessories to card format for ProductCard component
   const transformedAccessories = useMemo(() => {
     return accessories.map(accessory => ({
@@ -51,7 +65,7 @@ export default function AccessoriesPage() {
       categoryName: accessory.setName,
       rarity: accessory.productLine,
       setId: accessory.number,
-      imageUrl: accessory.imageUrl,
+      imageUrl: transformCloudinaryUrl(accessory.imageUrl),
       inStock: accessory.addToQuantity > 0,
       stock: accessory.addToQuantity,
       printing: 'Normal',
