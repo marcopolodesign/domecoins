@@ -90,11 +90,29 @@ export async function POST(request: NextRequest) {
     
     console.log(`[SearchWithPrices POST] Successfully loaded ${filteredCards.length} in-stock cards (filtered ${enrichedCards.length - filteredCards.length})`);
     
+    // CRITICAL: Sort cards with IN STOCK ALWAYS FIRST, then by price
+    const sortedCards = filteredCards.sort((a, b) => {
+      // First priority: in-stock cards ALWAYS at top
+      const aInStock = a.inStock || false;
+      const bInStock = b.inStock || false;
+      
+      if (aInStock && !bInStock) return -1;
+      if (!aInStock && bInStock) return 1;
+      
+      // Second priority: sort by price (lowest first)
+      const aPrice = a.pricing?.retailPrice || a.pricing?.marketPrice || 0;
+      const bPrice = b.pricing?.retailPrice || b.pricing?.marketPrice || 0;
+      
+      return aPrice - bPrice;
+    });
+
+    console.log(`[SearchWithPrices POST] Sorted ${sortedCards.length} cards (in-stock first, then by price)`);
+    
     return NextResponse.json({
-      results: filteredCards,
-      totalResults: filteredCards.length,
+      results: sortedCards,
+      totalResults: sortedCards.length,
       page: 1,
-      pageSize: filteredCards.length,
+      pageSize: sortedCards.length,
     });
     
   } catch (error: any) {
@@ -234,12 +252,30 @@ export async function GET(request: NextRequest) {
 
     console.log(`[SearchWithPrices] Filtered ${enrichedCards.length - filteredCards.length} cards (blacklist + code cards)`);
 
+    // CRITICAL: Sort cards with IN STOCK ALWAYS FIRST, then by price
+    const sortedCards = filteredCards.sort((a, b) => {
+      // First priority: in-stock cards ALWAYS at top
+      const aInStock = a.inStock || false;
+      const bInStock = b.inStock || false;
+      
+      if (aInStock && !bInStock) return -1;
+      if (!aInStock && bInStock) return 1;
+      
+      // Second priority: sort by price (lowest first)
+      const aPrice = a.pricing?.retailPrice || a.pricing?.marketPrice || 0;
+      const bPrice = b.pricing?.retailPrice || b.pricing?.marketPrice || 0;
+      
+      return aPrice - bPrice;
+    });
+
+    console.log(`[SearchWithPrices] Sorted ${sortedCards.length} cards (in-stock first, then by price)`);
+
     return NextResponse.json({
-      items: filteredCards,
+      items: sortedCards,
       total: totalAvailable, // Total cards available across all pages
       page,
       pageSize,
-      count: filteredCards.length, // Cards returned in this response
+      count: sortedCards.length, // Cards returned in this response
       totalCount: totalAvailable, // Total cards available for pagination
       providers: ['tcgplayer'],
       games: [{ id: "pokemon", name: "Pokémon" }],
