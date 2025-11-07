@@ -448,14 +448,17 @@ function CardsPageContent() {
                           {/* In Stock Section */}
                           {inStockCards.length > 0 && (
                             <div className="space-y-6">
-                              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 p-4 rounded-r-lg">
-                                <h2 className="text-2xl font-bold text-green-800 font-thunder">
-                                  En Stock ({inStockCards.length})
-                                </h2>
-                                <p className="text-green-700 text-sm font-interphases mt-1">
-                                  Disponibles para entrega inmediata
-                                </p>
-                              </div>
+                              {/* Only show section header when NOT in the inStock-only view */}
+                              {!showingInStock && (
+                                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 p-4 rounded-r-lg">
+                                  <h2 className="text-2xl font-bold text-green-800 font-thunder">
+                                    En Stock ({inStockCards.length})
+                                  </h2>
+                                  <p className="text-green-700 text-sm font-interphases mt-1">
+                                    Disponibles para entrega inmediata
+                                  </p>
+                                </div>
+                              )}
                               
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {inStockCards.map((card) => (
