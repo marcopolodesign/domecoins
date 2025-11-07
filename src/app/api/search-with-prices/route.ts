@@ -135,12 +135,19 @@ export async function GET(request: NextRequest) {
     const searchQuery = query || 'pokemon';
 
     console.log(`[SearchWithPrices] Query: ${searchQuery}, pageSize: ${pageSize}, page: ${page}`);
-    console.log(`[SearchWithPrices] Calculated offset: from=${(page - 1) * pageSize}, limit=${pageSize}`);
+    
+    // CRITICAL: Fetch MORE results from TCGPlayer so we can sort in-stock cards first
+    // We'll fetch up to 100 results to have a much better pool of cards to sort
+    // This ensures in-stock cards appear first even if they're further down in TCGPlayer's results
+    const fetchSize = Math.max(100, pageSize * 5);
+    const fetchPage = 1; // Always fetch from page 1 of the larger batch
+    
+    console.log(`[SearchWithPrices] Fetching ${fetchSize} results from TCGPlayer to enable in-stock sorting`);
 
-    // Fetch from TCGPlayer directly with proper pagination
+    // Fetch from TCGPlayer directly with larger batch size
     const tcgResponse = await searchTCGPlayerPrices(searchQuery, {
-      pageSize: pageSize,
-      page: page,
+      pageSize: fetchSize,
+      page: fetchPage,
     });
 
     const tcgResults = tcgResponse.cards;
@@ -270,20 +277,27 @@ export async function GET(request: NextRequest) {
 
     console.log(`[SearchWithPrices] Sorted ${sortedCards.length} cards (in-stock first, then by price)`);
 
+    // Now paginate the sorted results
+    const startIdx = (page - 1) * pageSize;
+    const endIdx = startIdx + pageSize;
+    const paginatedCards = sortedCards.slice(startIdx, endIdx);
+    
+    console.log(`[SearchWithPrices] Returning page ${page}: cards ${startIdx + 1}-${Math.min(endIdx, sortedCards.length)} of ${sortedCards.length} sorted cards`);
+
     return NextResponse.json({
-      items: sortedCards,
-      total: totalAvailable, // Total cards available across all pages
+      items: paginatedCards,
+      total: totalAvailable, // Total cards available from TCGPlayer
       page,
       pageSize,
-      count: sortedCards.length, // Cards returned in this response
-      totalCount: totalAvailable, // Total cards available for pagination
+      count: paginatedCards.length, // Cards returned in this response
+      totalCount: sortedCards.length, // Total cards in our sorted batch
       providers: ['tcgplayer'],
       games: [{ id: "pokemon", name: "Pokémon" }],
       pricesIncluded: true,
-      // Pagination metadata
-      hasNextPage: (page * pageSize) < totalAvailable,
+      // Pagination metadata (based on our sorted batch, not TCGPlayer's total)
+      hasNextPage: endIdx < sortedCards.length,
       hasPrevPage: page > 1,
-      totalPages: Math.ceil(totalAvailable / pageSize),
+      totalPages: Math.ceil(sortedCards.length / pageSize),
     });
     
   } catch (error) {

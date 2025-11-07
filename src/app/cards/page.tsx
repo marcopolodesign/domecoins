@@ -1,34 +1,30 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo, Suspense, useRef } from 'react'
+import { useEffect, useState, useCallback, useMemo, Suspense } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useSearchParams, useRouter } from 'next/navigation'
-import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
+import { useSearchParams } from 'next/navigation'
+import { XMarkIcon } from '@heroicons/react/24/outline'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import ProductCard from '@/components/ProductCard'
 import { RootState, AppDispatch } from '@/store'
-import { fetchCards, setFilters, setPage, setInStockCards } from '@/store/productsSlice'
+import { fetchCards, setFilters, setPage } from '@/store/productsSlice'
 import { fetchExchangeRate } from '@/store/currencySlice'
 
 
 function CardsPageContent() {
   const dispatch = useDispatch<AppDispatch>()
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [clientSideFilter, setClientSideFilter] = useState('')
   const [sortOrder, setSortOrder] = useState('Precio: Menor a mayor')
   const [showOnlyInStock, setShowOnlyInStock] = useState(false)
   
-  // Infinite scroll state for in-stock cards
+  // In-stock pagination state
   const [allInStockIds, setAllInStockIds] = useState<string[]>([])
   const [displayedCards, setDisplayedCards] = useState<any[]>([])
-  const [currentBatch, setCurrentBatch] = useState(0)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [hasMoreCards, setHasMoreCards] = useState(true)
+  const [inStockPage, setInStockPage] = useState(1)
   const [isLoadingInStock, setIsLoadingInStock] = useState(false)
-  const observerTarget = useRef<HTMLDivElement>(null)
   
-  const CARDS_PER_BATCH = 20
+  const CARDS_PER_PAGE = 20
   
   const { 
     cards, 
@@ -86,13 +82,12 @@ function CardsPageContent() {
             
             // Store all IDs for pagination
             setAllInStockIds(inStockIds)
-            setCurrentBatch(0)
+            setInStockPage(1)
             setDisplayedCards([])
-            setHasMoreCards(inStockIds.length > 0)
             
-            // Load first batch
+            // Load first page
             if (inStockIds.length > 0) {
-              loadCardBatch(inStockIds, 0)
+              loadInStockPage(inStockIds, 1)
             } else {
               setIsLoadingInStock(false)
             }
@@ -147,25 +142,26 @@ function CardsPageContent() {
     dispatch(setFilters({ name: '' }))
   }
 
-  // Load a batch of cards by IDs
-  const loadCardBatch = async (allIds: string[], batchIndex: number) => {
-    const startIdx = batchIndex * CARDS_PER_BATCH
-    const endIdx = startIdx + CARDS_PER_BATCH
-    const batchIds = allIds.slice(startIdx, endIdx)
+  // Load a specific page of in-stock cards
+  const loadInStockPage = useCallback(async (allIds: string[], pageNum: number) => {
+    const startIdx = (pageNum - 1) * CARDS_PER_PAGE
+    const endIdx = startIdx + CARDS_PER_PAGE
+    const pageIds = allIds.slice(startIdx, endIdx)
     
-    if (batchIds.length === 0) {
-      setHasMoreCards(false)
+    if (pageIds.length === 0) {
       setIsLoadingInStock(false)
       return
     }
+    
+    setIsLoadingInStock(true)
     
     try {
       const response = await fetch('/api/search-with-prices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          productIds: batchIds,
-          pageSize: CARDS_PER_BATCH 
+          productIds: pageIds,
+          pageSize: CARDS_PER_PAGE 
         })
       })
       
@@ -173,49 +169,24 @@ function CardsPageContent() {
         const data = await response.json()
         const newCards = data.results || []
         
-        setDisplayedCards(prev => [...prev, ...newCards])
-        setCurrentBatch(batchIndex)
-        setHasMoreCards(endIdx < allIds.length)
+        setDisplayedCards(newCards) // Replace cards, not append
         setIsLoadingInStock(false)
-        setIsLoadingMore(false)
         
-        console.log(`[CardsPage] Loaded batch ${batchIndex + 1}, cards: ${newCards.length}`)
+        console.log(`[CardsPage] Loaded page ${pageNum}, cards: ${newCards.length}`)
       }
     } catch (error) {
-      console.error('[CardsPage] Error loading card batch:', error)
+      console.error('[CardsPage] Error loading card page:', error)
       setIsLoadingInStock(false)
-      setIsLoadingMore(false)
     }
-  }
+  }, [CARDS_PER_PAGE])
 
-  // Infinite scroll observer for in-stock cards
-  useEffect(() => {
-    const inStockParam = searchParams.get('inStock')
-    const shouldShowOnlyInStock = inStockParam === 'true'
-    
-    if (!shouldShowOnlyInStock || !observerTarget.current || !hasMoreCards) {
-      return
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !isLoadingMore && hasMoreCards) {
-          console.log('[CardsPage] Loading more cards...')
-          setIsLoadingMore(true)
-          loadCardBatch(allInStockIds, currentBatch + 1)
-        }
-      },
-      { threshold: 0.1 }
-    )
-
-    observer.observe(observerTarget.current)
-
-    return () => {
-      if (observerTarget.current) {
-        observer.unobserve(observerTarget.current)
-      }
-    }
-  }, [searchParams, hasMoreCards, isLoadingMore, allInStockIds, currentBatch])
+  // Handle in-stock page change
+  const handleInStockPageChange = useCallback((pageNum: number) => {
+    // Scroll to top smoothly when changing pages
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setInStockPage(pageNum)
+    loadInStockPage(allInStockIds, pageNum)
+  }, [allInStockIds, loadInStockPage])
 
   // Check if we're showing in-stock view
   const inStockParam = searchParams.get('inStock')
@@ -347,7 +318,7 @@ function CardsPageContent() {
               </div>
             )}
 
-            {/* Right side: Filter input, Stock toggle, and Sort dropdown */}
+            {/* Right side: Filter input and Sort dropdown */}
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto sm:items-end">
               {/* Client-side filter input */}
               <input
@@ -359,28 +330,6 @@ function CardsPageContent() {
                 style={{ backgroundColor: '#F0F0F0' }}
               />
 
-              {/* "En Stock" Toggle */}
-              <button
-                onClick={() => {
-                  const inStockParam = searchParams.get('inStock')
-                  if (inStockParam === 'true') {
-                    // If already showing in-stock, go back to all cards
-                    router.push('/cards')
-                  } else {
-                    // Navigate to in-stock view
-                    router.push('/cards?inStock=true')
-                  }
-                }}
-                className={`flex items-center gap-2 py-3 px-4 rounded-md font-interphases text-base font-medium transition-all ${
-                  showOnlyInStock
-                    ? 'bg-green-600 text-white shadow-md'
-                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <div className={`w-2 h-2 rounded-full ${showOnlyInStock ? 'bg-white' : 'bg-green-500'}`}></div>
-                <span>En Stock</span>
-              </button>
-
               {/* Sort dropdown */}
               <div className="relative w-full sm:w-auto">
                 <select
@@ -391,7 +340,9 @@ function CardsPageContent() {
                   <option value="Precio: Menor a mayor">Precio: Menor a mayor</option>
                   <option value="Precio: Mayor a menor">Precio: Mayor a menor</option>
                 </select>
-                <ChevronDownIcon className="h-5 w-5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" />
+                <svg className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </div>
             </div>
           </div>
@@ -483,34 +434,173 @@ function CardsPageContent() {
               </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {filteredAndSortedCards.map((card) => (
-                        <ProductCard 
-                          key={card.id} 
-                          card={card}
-                          showAddToCart={true}
-                        />
-                      ))}
+                    {(() => {
+                      // Separate cards into in-stock and out-of-stock
+                      const inStockCards = filteredAndSortedCards.filter(card => 
+                        'inStock' in card ? card.inStock : false
+                      )
+                      const outOfStockCards = filteredAndSortedCards.filter(card => 
+                        !('inStock' in card ? card.inStock : false)
+                      )
+
+                      return (
+                        <>
+                          {/* In Stock Section */}
+                          {inStockCards.length > 0 && (
+                            <div className="space-y-6">
+                              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 p-4 rounded-r-lg">
+                                <h2 className="text-2xl font-bold text-green-800 font-thunder">
+                                  En Stock ({inStockCards.length})
+                                </h2>
+                                <p className="text-green-700 text-sm font-interphases mt-1">
+                                  Disponibles para entrega inmediata
+                                </p>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {inStockCards.map((card) => (
+                                  <ProductCard 
+                                    key={card.id} 
+                                    card={card}
+                                    showAddToCart={true}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Banner in the middle (only show if both sections exist) */}
+                          {inStockCards.length > 0 && outOfStockCards.length > 0 && (
+                            <div className="relative overflow-hidden hero-bg rounded-lg my-12">
+                              <div className="absolute inset-0 bg-gradient-to-r from-blue-900/90 to-purple-900/90"></div>
+                              <div className="relative z-10 py-12 px-6 text-center">
+                                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 font-thunder">
+                                  ¡Compramos tus cartas!
+                                </h2>
+                                <p className="text-white/90 text-lg mb-6 font-interphases">
+                                  ¿Tenés cartas que querés vender? Consultanos por WhatsApp
+                                </p>
+                                <a
+                                  href="https://wa.me/5491131160311"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg"
+                                >
+                                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                                  </svg>
+                                  Contactar por WhatsApp
+                                </a>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Out of Stock Section */}
+                          {outOfStockCards.length > 0 && (
+                            <div className="space-y-6">
+                              <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-l-4 border-orange-500 p-4 rounded-r-lg">
+                                <h2 className="text-2xl font-bold text-orange-800 font-thunder">
+                                  Por Encargo ({outOfStockCards.length})
+                                </h2>
+                                <p className="text-orange-700 text-sm font-interphases mt-1">
+                                  Disponibles bajo pedido
+                                </p>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {outOfStockCards.map((card) => (
+                                  <ProductCard 
+                                    key={card.id} 
+                                    card={card}
+                                    showAddToCart={true}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )
+                    })()}
+
+                    {/* Pagination for in-stock view */}
+                {showingInStock && allInStockIds.length > CARDS_PER_PAGE && (
+                  <div className="space-y-4 mt-8">
+                    {/* Pagination Info */}
+                    <div className="text-center text-sm text-gray-600">
+                      Mostrando {((inStockPage - 1) * CARDS_PER_PAGE) + 1} - {Math.min(inStockPage * CARDS_PER_PAGE, allInStockIds.length)} de {allInStockIds.length} cartas en stock
                     </div>
-
-                {/* Infinite Scroll Observer Target (for in-stock view) */}
-                {showingInStock && hasMoreCards && (
-                  <div ref={observerTarget} className="py-8 text-center">
-                    {isLoadingMore && (
-                      <div className="flex items-center justify-center gap-3">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                        <p className="text-gray-600 font-interphases">Cargando más cartas...</p>
+                    
+                    {/* Pagination Controls */}
+                    <div className="flex justify-center items-center gap-3">
+                      <button
+                        onClick={() => handleInStockPageChange(1)}
+                        disabled={inStockPage === 1 || isLoadingInStock}
+                        className="px-3 py-1 rounded-button text-sm font-medium bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        ««
+                      </button>
+                      <button
+                        onClick={() => handleInStockPageChange(inStockPage - 1)}
+                        disabled={inStockPage === 1 || isLoadingInStock}
+                        className="px-3 py-1 rounded-button text-sm font-medium bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        « Anterior
+                      </button>
+                      
+                      <div className="flex gap-2">
+                        {(() => {
+                          const totalPages = Math.ceil(allInStockIds.length / CARDS_PER_PAGE);
+                          const pages: (number | string)[] = [];
+                          
+                          if (totalPages <= 7) {
+                            for (let i = 1; i <= totalPages; i++) pages.push(i);
+                          } else {
+                            if (inStockPage <= 3) {
+                              pages.push(1, 2, 3, 4, '...', totalPages);
+                            } else if (inStockPage >= totalPages - 2) {
+                              pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+                            } else {
+                              pages.push(1, '...', inStockPage - 1, inStockPage, inStockPage + 1, '...', totalPages);
+                            }
+                          }
+                          
+                          return pages.map((pageNum, idx) => {
+                            if (pageNum === '...') {
+                              return <span key={`ellipsis-${idx}`} className="px-2 text-gray-500">...</span>;
+                            }
+                            return (
+                              <button
+                                key={pageNum}
+                                onClick={() => handleInStockPageChange(pageNum as number)}
+                                disabled={isLoadingInStock}
+                                className={`px-3 py-1 rounded-button text-sm font-medium transition-colors ${
+                                  pageNum === inStockPage
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+                                } disabled:opacity-50`}
+                              >
+                                {pageNum}
+                              </button>
+                            );
+                          });
+                        })()}
                       </div>
-                    )}
-                  </div>
-                )}
-
-                {/* End of results message (for in-stock view) */}
-                {showingInStock && !hasMoreCards && displayedCards.length > 0 && (
-                  <div className="py-8 text-center">
-                    <p className="text-gray-600 font-interphases">
-                      ✓ Has visto todas las {allInStockIds.length} cartas en stock
-                    </p>
+                      
+                      <button
+                        onClick={() => handleInStockPageChange(inStockPage + 1)}
+                        disabled={inStockPage >= Math.ceil(allInStockIds.length / CARDS_PER_PAGE) || isLoadingInStock}
+                        className="px-3 py-1 rounded-button text-sm font-medium bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Siguiente »
+                      </button>
+                      <button
+                        onClick={() => handleInStockPageChange(Math.ceil(allInStockIds.length / CARDS_PER_PAGE))}
+                        disabled={inStockPage >= Math.ceil(allInStockIds.length / CARDS_PER_PAGE) || isLoadingInStock}
+                        className="px-3 py-1 rounded-button text-sm font-medium bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        »»
+                      </button>
+                    </div>
                   </div>
                 )}
 
