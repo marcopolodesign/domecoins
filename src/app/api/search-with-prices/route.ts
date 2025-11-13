@@ -136,23 +136,37 @@ export async function GET(request: NextRequest) {
 
     console.log(`[SearchWithPrices] Query: ${searchQuery}, pageSize: ${pageSize}, page: ${page}`);
     
-    // CRITICAL: Fetch MORE results from TCGPlayer so we can sort in-stock cards first
-    // We'll fetch up to 100 results to have a much better pool of cards to sort
-    // This ensures in-stock cards appear first even if they're further down in TCGPlayer's results
-    const fetchSize = Math.max(100, pageSize * 5);
-    const fetchPage = 1; // Always fetch from page 1 of the larger batch
-    
-    console.log(`[SearchWithPrices] Fetching ${fetchSize} results from TCGPlayer to enable in-stock sorting`);
-
-    // Fetch from TCGPlayer directly with larger batch size
-    const tcgResponse = await searchTCGPlayerPrices(searchQuery, {
-      pageSize: fetchSize,
-      page: fetchPage,
+    // CRITICAL: Fetch ALL results from TCGPlayer to enable proper in-stock sorting
+    // First, make an initial request to get the total count
+    const initialResponse = await searchTCGPlayerPrices(searchQuery, {
+      pageSize: 100,
+      page: 1,
     });
-
-    const tcgResults = tcgResponse.cards;
-    const totalAvailable = tcgResponse.totalResults;
-
+    
+    const totalAvailable = initialResponse.totalResults;
+    console.log(`[SearchWithPrices] Total available from TCGPlayer: ${totalAvailable}`);
+    
+    // Fetch ALL pages from TCGPlayer (up to a reasonable limit to avoid timeouts)
+    const maxCardsToFetch = Math.min(totalAvailable, 1000); // Cap at 1000 to avoid timeouts
+    const fetchPageSize = 100;
+    const totalPagesToFetch = Math.ceil(maxCardsToFetch / fetchPageSize);
+    
+    console.log(`[SearchWithPrices] Fetching ${totalPagesToFetch} pages (${maxCardsToFetch} cards) from TCGPlayer`);
+    
+    // Fetch all pages in parallel
+    const fetchPromises = [];
+    for (let i = 1; i <= totalPagesToFetch; i++) {
+      fetchPromises.push(
+        searchTCGPlayerPrices(searchQuery, {
+          pageSize: fetchPageSize,
+          page: i,
+        })
+      );
+    }
+    
+    const allResponses = await Promise.all(fetchPromises);
+    const tcgResults = allResponses.flatMap(response => response.cards);
+    
     console.log(`[SearchWithPrices] Got ${tcgResults.length} results from TCGPlayer (${totalAvailable} total available)`);
 
     // Get inventory for all product IDs (need to check all variants)
