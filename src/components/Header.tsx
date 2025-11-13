@@ -126,7 +126,7 @@ export default function Header() {
             <span className="font-medium">
               ¡Compramos tus cartas! 
               <a 
-                href="https://wa.me/5491131160311" 
+                href="https://wa.me/5491158204843" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="ml-1 underline hover:text-white/80 transition-colors"

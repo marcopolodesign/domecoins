@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import ProductCard from '@/components/ProductCard'
+import FloatingWhatsApp from '@/components/FloatingWhatsApp'
 import { RootState, AppDispatch } from '@/store'
 import { fetchCards, setFilters, setPage } from '@/store/productsSlice'
 import { fetchExchangeRate } from '@/store/currencySlice'
@@ -484,7 +485,7 @@ function CardsPageContent() {
                                   ¿Tenés cartas que querés vender? Consultanos por WhatsApp
                                 </p>
                                 <a
-                                  href="https://wa.me/5491131160311"
+                                  href="https://wa.me/5491158204843"
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg"
@@ -709,6 +710,9 @@ function CardsPageContent() {
           </div>
         </div>
       </div>
+
+      {/* Floating WhatsApp Button with Arrow */}
+      <FloatingWhatsApp showArrow={true} />
     </div>
   )
 }

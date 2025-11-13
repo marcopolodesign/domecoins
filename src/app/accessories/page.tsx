@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux'
 import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import ProductCard from '@/components/ProductCard'
+import FloatingWhatsApp from '@/components/FloatingWhatsApp'
 import { RootState } from '@/store'
 import type { Accessory } from '@/lib/kv'
 
@@ -288,6 +289,9 @@ export default function AccessoriesPage() {
           </div>
         </div>
       </div>
+
+      {/* Floating WhatsApp Button with Arrow */}
+      <FloatingWhatsApp showArrow={true} />
     </div>
   )
 }

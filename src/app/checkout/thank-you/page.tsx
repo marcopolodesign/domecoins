@@ -294,7 +294,7 @@ function ThankYouContent() {
               </p>
               <div className="flex justify-center">
                 <a
-                  href={`https://wa.me/5491131160311?text=${encodeURIComponent(
+                  href={`https://wa.me/5491158204843?text=${encodeURIComponent(
                     `Hola! Acabo de hacer un pedido:\n\n` +
                     `📋 *Pedido #${orderNumber}*\n\n` +
                     `*Productos:*\n` +
