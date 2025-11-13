@@ -133,11 +133,24 @@ function CardsPageContent() {
     }
   }, [dispatch, filters, searchParams])
 
+  const smoothScrollToTop = useCallback(() => {
+    const scrollDuration = 600 // Duration in milliseconds
+    const scrollStep = -window.scrollY / (scrollDuration / 15)
+    
+    const scrollInterval = setInterval(() => {
+      if (window.scrollY !== 0) {
+        window.scrollBy(0, scrollStep)
+      } else {
+        clearInterval(scrollInterval)
+      }
+    }, 15)
+  }, [])
+
   const handlePageChange = useCallback((page: number) => {
     // Scroll to top smoothly when changing pages
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    smoothScrollToTop()
     dispatch(setPage(page))
-  }, [dispatch])
+  }, [dispatch, smoothScrollToTop])
 
   const handleClearSearch = () => {
     dispatch(setFilters({ name: '' }))
@@ -184,10 +197,10 @@ function CardsPageContent() {
   // Handle in-stock page change
   const handleInStockPageChange = useCallback((pageNum: number) => {
     // Scroll to top smoothly when changing pages
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    smoothScrollToTop()
     setInStockPage(pageNum)
     loadInStockPage(allInStockIds, pageNum)
-  }, [allInStockIds, loadInStockPage])
+  }, [allInStockIds, loadInStockPage, smoothScrollToTop])
 
   // Check if we're showing in-stock view
   const inStockParam = searchParams.get('inStock')

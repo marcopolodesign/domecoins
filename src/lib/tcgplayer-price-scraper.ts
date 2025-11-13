@@ -166,6 +166,8 @@ export async function searchTCGPlayerPrices(
     };
     
     // POST payload (required for results to be returned)
+    // Note: Removing productLineName filter to get ALL Pokemon products (cards + sealed products)
+    // This matches TCGPlayer's website behavior
     const payload = {
       algorithm: 'salesrel',
       from,
