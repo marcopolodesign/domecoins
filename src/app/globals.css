@@ -38,7 +38,6 @@
   
   html {
     scroll-behavior: smooth;
-    height: 100%;
     overflow-x: hidden;
   }
   
@@ -46,9 +45,7 @@
     font-family: 'TT Interphases Pro', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    min-height: 100%;
     overflow-x: hidden;
-    position: relative;
   }
   
   h2, h3 {

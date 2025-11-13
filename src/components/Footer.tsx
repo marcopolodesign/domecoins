@@ -18,7 +18,7 @@ export default function Footer() {
           <div className="flex flex-col space-y-4">
             <Link href="/" className="flex items-center space-x-3">
               <div className="h-40 w-40 flex items-center justify-center">
-              <svg width="3000" height="942" viewBox="0 0 3000 942" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg className="w-full h-full" viewBox="0 0 3000 942" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g clip-path="url(#clip0_2282_3)">
 <path d="M712.04 236.73L711.51 941.5L1285.85 941.93L1375.16 848.18L1375.69 145.7L803.63 145.27L712.03 236.73H712.04ZM1025.5 273.58L1064.4 273.61L1064 806.77L1025.1 806.74L1025.5 273.58Z" fill="white"/>
 <path d="M3000 391.47V147.07H2826.19C2801.77 178.9 2779.44 200.82 2737.43 204.06L2477.13 203.98L2442.67 238.44V941.95H2999.99V692.98H2764.73V656.43H2999.99V432.59H2764.73V391.48H2999.99L3000 391.47Z" fill="white"/>
