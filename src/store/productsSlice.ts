@@ -68,12 +68,12 @@ const initialState: ProductsState = {
   error: null,
   filters: {
     page: 1,
-    pageSize: 20,
+    pageSize: 100,
     orderBy: 'name',
   },
   pagination: {
     page: 1,
-    pageSize: 20,
+    pageSize: 100,
     totalCount: 0,
     count: 0,
   },
@@ -271,7 +271,7 @@ const productsSlice = createSlice({
     clearFilters: (state) => {
       state.filters = {
         page: 1,
-        pageSize: 20,
+        pageSize: 100,
         orderBy: 'name',
       };
     },
@@ -316,7 +316,7 @@ const productsSlice = createSlice({
         state.cards = action.payload.items || action.payload.data || [];
         state.pagination = {
           page: action.payload.page || 1,
-          pageSize: action.payload.pageSize || 20,
+          pageSize: action.payload.pageSize || 100,
           count: action.payload.count || action.payload.items?.length || 0,
           totalCount: action.payload.totalCount || action.payload.items?.length || 0,
         };
