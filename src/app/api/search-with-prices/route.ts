@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
     // CRITICAL: Fetch ALL results from TCGPlayer to enable proper in-stock sorting
     // First, make an initial request to get the total count
     const initialResponse = await searchTCGPlayerPrices(searchQuery, {
-      pageSize: 100,
+      pageSize: 300,
       page: 1,
     });
     
@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
     
     // Fetch ALL pages from TCGPlayer (up to a reasonable limit to avoid timeouts)
     const maxCardsToFetch = Math.min(totalAvailable, 1000); // Cap at 1000 to avoid timeouts
-    const fetchPageSize = 100;
+    const fetchPageSize = 300;
     const totalPagesToFetch = Math.ceil(maxCardsToFetch / fetchPageSize);
     
     console.log(`[SearchWithPrices] Fetching ${totalPagesToFetch} pages (${maxCardsToFetch} cards) from TCGPlayer`);

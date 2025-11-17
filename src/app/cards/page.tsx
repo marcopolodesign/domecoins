@@ -25,7 +25,7 @@ function CardsPageContent() {
   const [inStockPage, setInStockPage] = useState(1)
   const [isLoadingInStock, setIsLoadingInStock] = useState(false)
   
-  const CARDS_PER_PAGE = 100
+  const CARDS_PER_PAGE = 300
   
   const { 
     cards, 
