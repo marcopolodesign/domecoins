@@ -18,7 +18,7 @@ export default function Footer() {
           <div className="flex flex-col space-y-4">
             <Link href="/" className="flex items-center space-x-3">
               <div className="h-40 w-40 flex items-center justify-center">
-              <svg width="3000" height="942" viewBox="0 0 3000 942" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg className="w-full h-full" viewBox="0 0 3000 942" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g clip-path="url(#clip0_2282_3)">
 <path d="M712.04 236.73L711.51 941.5L1285.85 941.93L1375.16 848.18L1375.69 145.7L803.63 145.27L712.03 236.73H712.04ZM1025.5 273.58L1064.4 273.61L1064 806.77L1025.1 806.74L1025.5 273.58Z" fill="white"/>
 <path d="M3000 391.47V147.07H2826.19C2801.77 178.9 2779.44 200.82 2737.43 204.06L2477.13 203.98L2442.67 238.44V941.95H2999.99V692.98H2764.73V656.43H2999.99V432.59H2764.73V391.48H2999.99L3000 391.47Z" fill="white"/>
@@ -78,12 +78,25 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <a 
-                  href="https://wa.me/5491131160311" 
+                  href="https://wa.me/5491158204843" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-white transition-colors duration-200"
                 >
-                  WhatsApp: +54 9 11 3116-0311
+                  WhatsApp: +54 9 11 5820-4843
+                </a>
+              </li>
+              <li>
+                <a 
+                  href="https://instagram.com/DOME.TCG" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors duration-200"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                  </svg>
+                  Instagram: @DOME.TCG
                 </a>
               </li>
               <li className="text-gray-400">

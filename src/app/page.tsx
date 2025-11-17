@@ -478,7 +478,7 @@ export default function HomePage() {
         showRefreshButton={false}
         showFloatingButton={true}
         floatingButtonText="Ver Todas las Cartas"
-        floatingButtonHref="/cards"
+        floatingButtonHref="/cards?inStock=true"
         className="py-16 bg-gradient-to-b from-white to-gray-50"
       />
 
@@ -492,7 +492,7 @@ export default function HomePage() {
             Explora nuestra vasta colección y descubre ofertas increíbles.
           </p>
           <Link 
-            href="/cards" 
+            href="/cards?inStock=true" 
             className="inline-flex items-center gap-2 bg-white text-blue-600 px-8 py-4 rounded-full font-semibold hover:bg-gray-100 transition-colors duration-200"
           >
             Explorar Cartas

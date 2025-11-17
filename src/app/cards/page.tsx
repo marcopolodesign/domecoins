@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import ProductCard from '@/components/ProductCard'
+import FloatingWhatsApp from '@/components/FloatingWhatsApp'
 import { RootState, AppDispatch } from '@/store'
 import { fetchCards, setFilters, setPage } from '@/store/productsSlice'
 import { fetchExchangeRate } from '@/store/currencySlice'
@@ -24,7 +25,7 @@ function CardsPageContent() {
   const [inStockPage, setInStockPage] = useState(1)
   const [isLoadingInStock, setIsLoadingInStock] = useState(false)
   
-  const CARDS_PER_PAGE = 20
+  const CARDS_PER_PAGE = 300
   
   const { 
     cards, 
@@ -132,11 +133,24 @@ function CardsPageContent() {
     }
   }, [dispatch, filters, searchParams])
 
+  const smoothScrollToTop = useCallback(() => {
+    const scrollDuration = 600 // Duration in milliseconds
+    const scrollStep = -window.scrollY / (scrollDuration / 15)
+    
+    const scrollInterval = setInterval(() => {
+      if (window.scrollY !== 0) {
+        window.scrollBy(0, scrollStep)
+      } else {
+        clearInterval(scrollInterval)
+      }
+    }, 15)
+  }, [])
+
   const handlePageChange = useCallback((page: number) => {
     // Scroll to top smoothly when changing pages
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    smoothScrollToTop()
     dispatch(setPage(page))
-  }, [dispatch])
+  }, [dispatch, smoothScrollToTop])
 
   const handleClearSearch = () => {
     dispatch(setFilters({ name: '' }))
@@ -183,10 +197,10 @@ function CardsPageContent() {
   // Handle in-stock page change
   const handleInStockPageChange = useCallback((pageNum: number) => {
     // Scroll to top smoothly when changing pages
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    smoothScrollToTop()
     setInStockPage(pageNum)
     loadInStockPage(allInStockIds, pageNum)
-  }, [allInStockIds, loadInStockPage])
+  }, [allInStockIds, loadInStockPage, smoothScrollToTop])
 
   // Check if we're showing in-stock view
   const inStockParam = searchParams.get('inStock')
@@ -484,7 +498,7 @@ function CardsPageContent() {
                                   ¿Tenés cartas que querés vender? Consultanos por WhatsApp
                                 </p>
                                 <a
-                                  href="https://wa.me/5491131160311"
+                                  href="https://wa.me/5491158204843"
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg"
@@ -709,6 +723,9 @@ function CardsPageContent() {
           </div>
         </div>
       </div>
+
+      {/* Floating WhatsApp Button with Arrow */}
+      <FloatingWhatsApp showArrow={true} />
     </div>
   )
 }
