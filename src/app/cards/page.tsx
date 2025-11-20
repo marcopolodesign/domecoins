@@ -258,6 +258,14 @@ function CardsPageContent() {
     return filtered
   }, [sourceCards, clientSideFilter, sortOrder, showOnlyInStock])
 
+  // Calculate in-stock count from filtered cards (TEMPORARILY showing only in-stock count)
+  const inStockCount = useMemo(() => {
+    if (!filteredAndSortedCards || filteredAndSortedCards.length === 0) return 0
+    return filteredAndSortedCards.filter(card => 
+      'inStock' in card ? card.inStock : false
+    ).length
+  }, [filteredAndSortedCards])
+
   return (
     <div className="min-h-screen bg-gray-50 mt-32">
       <div className="container-custom py-8 flex flex-col gap-4">
@@ -267,7 +275,7 @@ function CardsPageContent() {
             {showingInStock
               ? `Cartas en Stock (${allInStockIds.length})`
               : filters.name && filters.name.trim() !== ''
-              ? `Resultados para ${filters.name} (${pagination.totalCount})`
+              ? `Resultados para ${filters.name} (${inStockCount})`
               : 'Catálogo de Cartas Pokemon'}
           </h1>
           {showingInStock && (
@@ -512,8 +520,8 @@ function CardsPageContent() {
                             </div>
                           )}
 
-                          {/* Out of Stock Section */}
-                          {outOfStockCards.length > 0 && (
+                          {/* Out of Stock Section - TEMPORARILY REMOVED */}
+                          {/* {outOfStockCards.length > 0 && (
                             <div className="space-y-6">
                               <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-l-4 border-orange-500 p-4 rounded-r-lg">
                                 <h2 className="text-2xl font-bold text-orange-800 font-thunder">
@@ -534,7 +542,7 @@ function CardsPageContent() {
                                 ))}
                               </div>
                             </div>
-                          )}
+                          )} */}
                         </>
                       )
                     })()}
