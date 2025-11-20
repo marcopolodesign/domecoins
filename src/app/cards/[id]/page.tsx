@@ -348,12 +348,12 @@ export default function CardDetailPage() {
               )}
             </div>
             
-            {/* Variants Selection */}
-            {card.variants && card.variants.length > 0 && (
+            {/* Variants Selection - TEMPORARILY SHOWING ONLY IN-STOCK VARIANTS */}
+            {card.variants && card.variants.filter(variant => variant.inStock).length > 0 && (
               <div className="border-t pt-6">
                 <h3 className="text-2xl font-thunder mb-4">Versiones Disponibles</h3>
                 <div className="space-y-3">
-                  {card.variants.map((variant, idx) => {
+                  {card.variants.filter(variant => variant.inStock).map((variant, idx) => {
                     // Compare by printing to differentiate variants of the same product
                     const isSelected = selectedVariant?.printing === variant.printing;
                     // Show retailPrice (with formula applied), fallback to marketPrice
@@ -384,11 +384,9 @@ export default function CardDetailPage() {
                             <p className={`text-sm font-interphases font-semibold ${
                               isSelected 
                                 ? 'text-white' 
-                                : variant.inStock 
-                                  ? 'text-green-600' 
-                                  : 'text-orange-600'
+                                : 'text-green-600'
                             }`}>
-                              {variant.inStock ? '✓ En Stock' : '⏱ Por Encargo'}
+                              ✓ En Stock
                             </p>
                           </div>
                           <div className="text-right">

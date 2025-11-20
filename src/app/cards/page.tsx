@@ -512,8 +512,8 @@ function CardsPageContent() {
                             </div>
                           )}
 
-                          {/* Out of Stock Section */}
-                          {outOfStockCards.length > 0 && (
+                          {/* Out of Stock Section - TEMPORARILY REMOVED */}
+                          {/* {outOfStockCards.length > 0 && (
                             <div className="space-y-6">
                               <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-l-4 border-orange-500 p-4 rounded-r-lg">
                                 <h2 className="text-2xl font-bold text-orange-800 font-thunder">
@@ -534,7 +534,7 @@ function CardsPageContent() {
                                 ))}
                               </div>
                             </div>
-                          )}
+                          )} */}
                         </>
                       )
                     })()}
